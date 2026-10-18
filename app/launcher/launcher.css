@@ -1,0 +1,252 @@
+/*
+ * Écran de choix du jeu : charte graphique Genesis (voir public/control/control.css).
+ * Chaque jeu a sa couleur d'accent : --a1 → --a2.
+ */
+
+:root {
+  --bg: #07080f;
+  --card: #151724;
+  --text: #f6f4fb;
+  --muted: #a9a6c2;
+  --accent-l: #c590ff;
+  --red: #ff4d70;
+  --num: 'Bruno Ace SC', 'Arial Narrow', sans-serif;
+  --txt: 'Chakra Petch', 'Arial Narrow', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+html {
+  color-scheme: dark;
+}
+[hidden] {
+  display: none !important;
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(900px 460px at 50% -180px, rgba(158, 66, 237, 0.25), transparent 70%),
+    var(--bg);
+  color: var(--text);
+  font: 500 15px/1.45 var(--txt);
+  user-select: none;
+  cursor: default;
+}
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 26px 40px 18px;
+}
+
+/* ------------------------------------------------------------ en-tête */
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.word {
+  font: 400 15px var(--num);
+  letter-spacing: 0.32em;
+  color: var(--accent-l);
+}
+h1 {
+  margin: 26px 0 0;
+  font: 400 34px/1.1 var(--num);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.lead {
+  max-width: 560px;
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.error {
+  margin: 14px 0 0;
+  padding: 10px 14px;
+  border-left: 4px solid var(--red);
+  background: rgba(255, 77, 112, 0.12);
+  color: #ffd3dc;
+  white-space: pre-line;
+  user-select: text;
+}
+
+/* ------------------------------------------------------------ cartes */
+
+.games {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 22px;
+  align-content: center;
+  margin: 24px 0 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.game {
+  --a1: #4802de;
+  --a2: #9e42ed;
+  --cut: 22px;
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 2px; /* épaisseur du liseré en dégradé */
+  border: 0;
+  background: linear-gradient(135deg, var(--a1), var(--a2));
+  clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)));
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.game.rouge {
+  --a1: #c32a52;
+  --a2: #ff4d70;
+}
+.game-in {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: linear-gradient(180deg, #1b1d31, var(--card));
+  clip-path: polygon(0 0, calc(100% - var(--cut) + 1px) 0, 100% calc(var(--cut) - 1px), 100% 100%, calc(var(--cut) - 1px) 100%, 0 calc(100% - var(--cut) + 1px));
+}
+
+.art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 170px;
+  overflow: hidden;
+  background:
+    linear-gradient(115deg, transparent 46%, rgba(255, 255, 255, 0.05) 46% 54%, transparent 54%),
+    radial-gradient(260px 130px at 30% 40%, color-mix(in srgb, var(--a2) 38%, transparent), transparent 70%),
+    #0d0e1b;
+}
+.art::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--a1), var(--a2));
+}
+.mono {
+  font: 400 74px/1 var(--num);
+  letter-spacing: 0.04em;
+  background: linear-gradient(180deg, #fff, var(--a2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 6px 18px color-mix(in srgb, var(--a1) 70%, transparent));
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 20px 18px;
+}
+.name {
+  font: 400 21px/1.15 var(--num);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.tag {
+  min-height: 2.9em;
+  color: var(--muted);
+  font-size: 14px;
+}
+.cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
+  font: 600 14px var(--txt);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-l);
+}
+.cta .arrow {
+  font-size: 18px;
+  transition: transform 0.15s ease;
+}
+.last {
+  padding: 2px 8px;
+  border: 1px solid rgba(197, 144, 255, 0.5);
+  color: var(--accent-l);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+}
+
+.game:hover:not(:disabled),
+.game:focus-visible:not(:disabled) {
+  transform: translateY(-3px);
+  filter: drop-shadow(0 10px 22px color-mix(in srgb, var(--a1) 55%, transparent));
+  outline: none;
+}
+.game:hover:not(:disabled) .arrow,
+.game:focus-visible:not(:disabled) .arrow {
+  transform: translateX(5px);
+}
+.game:focus-visible:not(:disabled) .game-in {
+  box-shadow: inset 0 0 0 2px var(--accent-l);
+}
+
+/* Jeu pas encore disponible */
+.game:disabled {
+  cursor: not-allowed;
+  background: rgba(158, 66, 237, 0.25);
+}
+.game:disabled .art,
+.game:disabled .name,
+.game:disabled .tag {
+  opacity: 0.55;
+}
+.game:disabled .cta {
+  color: var(--muted);
+}
+.soon {
+  padding: 2px 8px;
+  border: 1px solid rgba(169, 166, 194, 0.5);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+}
+
+/* Démarrage en cours */
+body.busy .game {
+  pointer-events: none;
+}
+body.busy .game:not(.loading) {
+  filter: grayscale(0.7) brightness(0.7);
+}
+.game.loading .arrow {
+  animation: pulse 0.9s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.foot {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game,
+  .cta .arrow {
+    transition: none;
+  }
+  .game.loading .arrow {
+    animation: none;
+  }
+}

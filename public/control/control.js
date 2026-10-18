@@ -387,6 +387,12 @@
     api('POST', '/api/reset').then(() => toast('Réglages réinitialisés.', 'ok')).catch(() => {});
   });
 
+  // Dans l'application de bureau seulement : retour à l'écran de choix du jeu.
+  if (window.overlayApp && window.overlayApp.backToGames) {
+    $('back-games').hidden = false;
+    $('back-games').addEventListener('click', () => window.overlayApp.backToGames());
+  }
+
   for (const r of qsa('input[name=format]')) r.addEventListener('change', () => patch({ series: { format: Number(r.value) } }));
   $('autocount').addEventListener('change', (e) => patch({ series: { autoCount: e.target.checked } }));
   $('series-reset').addEventListener('click', () => api('POST', '/api/series/reset').catch(() => {}));

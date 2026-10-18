@@ -33,7 +33,7 @@ Le dossier `dist/` (l'application et le serveur en .exe) n'est pas dans le dép�
 
 ### L'application (rien à installer pour l'utiliser)
 
-Une fois fabriquée, ouvrez le dossier **`dist/Overlay-LoL/`** et double-cliquez sur **`Overlay-LoL.exe`**. Une fenêtre s'ouvre avec le panneau de contrôle : barre d'état en haut (connexion, partie en cours, adresse de l'overlay), puis les onglets **Principal**, **Affichage**, **Équipes** et **OBS**. Le serveur de l'overlay tourne dans cette fenêtre : **la fermer arrête l'overlay dans OBS** (le programme demande confirmation).
+Une fois fabriquée, ouvrez le dossier **`dist/Overlay-LoL/`** et double-cliquez sur **`Overlay-LoL.exe`**. Une fenêtre s'ouvre d'abord sur **le choix du jeu** : **League of Legends** est disponible, **VALORANT** est affiché « Bientôt » (son overlay n'est pas encore là). Cliquez sur League of Legends : la même fenêtre affiche alors le panneau de contrôle, avec la barre d'état en haut (connexion, partie en cours, adresse de l'overlay) et les onglets **Principal**, **Affichage**, **Équipes** et **OBS**. Le bouton **← Jeux** de la barre d'état ramène au choix du jeu ; l'overlay déjà lancé continue de tourner pour OBS. Le serveur de l'overlay tourne dans cette fenêtre : **la fermer arrête l'overlay dans OBS** (le programme demande confirmation dès qu'un jeu est lancé).
 
 - Le dossier est autonome (Electron et toutes les pages sont dedans, environ 300 Mo). Copiez-le où vous voulez : Bureau, autre disque, clé USB.
 - Vos réglages et vos logos sont gardés dans un dossier `data/` **à côté du .exe**, avec un journal (`data/overlay.log`). Si le dossier de l'application n'est pas modifiable, par exemple dans `Program Files`, ils vont dans `%APPDATA%\Overlay LoL\data`.
@@ -209,7 +209,10 @@ test/                  tests automatiques (npm test, aucune dépendance)
 public/overlay/        l'overlay pour OBS
 public/control/        le panneau de contrôle
 public/shared/         polices de la charte (Bruno Ace SC et Chakra Petch, licence OFL)
-app/main.js            fenêtre de bureau (Electron) : lance le serveur et affiche le panneau
+app/main.js            fenêtre de bureau (Electron) : choix du jeu, puis serveur et panneau du jeu choisi
+app/games.js           la liste des jeux (LoL prêt, VALORANT à venir) : c'est ici qu'on en ajoute un
+app/launcher/          l'écran de choix du jeu
+app/preload.js         le petit pont entre les pages et l'application (choisir un jeu, revenir)
 build/build-app.js     fabrication de l'application (npm run build:app)
 build/build-exe.js     fabrication du serveur seul en .exe (npm run build:exe)
 build/icon.js          icône de l'application, dessinée en code
@@ -219,6 +222,10 @@ data/                  configuration et logos (créé au premier lancement ; à 
 ```
 
 Pour les développeurs : `GET /api/state` renvoie l'état complet, `GET /events` le diffuse en Server-Sent Events. Les routes qui modifient quelque chose n'acceptent que du JSON envoyé par une page servie par le serveur lui-même.
+
+### Ajouter un jeu (par exemple VALORANT)
+
+Dans `app/games.js`, l'entrée du jeu passe de `status: 'soon'` à `status: 'ready'` et reçoit une fonction `start()` qui démarre son serveur et renvoie l'adresse de son panneau de contrôle (`{ url }`), comme celle de LoL. L'écran de choix, le bouton « ← Jeux », la mémoire du dernier jeu utilisé et la confirmation à la fermeture s'adaptent tout seuls, et `npm test` vérifie que la liste reste cohérente.
 
 ## Crédits
 

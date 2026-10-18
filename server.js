@@ -54,7 +54,9 @@ const DEMO_SPEED = Math.max(1, numOpt('speed', 12));
 const DEMO_START = Math.max(0, numOpt('start', 0));
 const DEMO_SPECTATOR = hasFlag('spectator');
 // --draft : la démo ne simule que la sélection des champions (picks et bans), en boucle, sans partie.
-const DEMO_DRAFT = DEMO && hasFlag('draft');
+// --full : démo complète : sélection des champions, puis partie, puis écran de fin, puis on recommence.
+const DEMO_FULL = DEMO && hasFlag('full');
+const DEMO_DRAFT = DEMO && (hasFlag('draft') || DEMO_FULL);
 // Lecture des picks et bans dans le client LoL ; --no-lcu (ou NO_LCU=1) la désactive.
 const LCU_ENABLED = !DEMO && !hasFlag('no-lcu') && !process.env.NO_LCU;
 
@@ -442,7 +444,10 @@ async function readDraftRaw() {
 
 function handleDraft(raw) {
   const d = raw ? normalizeDraft(raw, champs) : null;
-  if (d && !S.draft) log(`Sélection des champions détectée${d.spectating ? ' (en spectateur)' : ''}.`);
+  if (d && !S.draft) {
+    S.endScreenVisible = false; // une nouvelle sélection commence : l'écran de fin de la partie précédente s'efface
+    log(`Sélection des champions détectée${d.spectating ? ' (en spectateur)' : ''}.`);
+  }
   if (!d && S.draft) log('Sélection des champions terminée.');
   S.draft = d;
   if (d) {
@@ -509,6 +514,42 @@ function onGame(raw) {
 }
 
 let demo = null;
+
+/*
+ * Partie simulée. Avec --full, elle ne démarre qu'une fois la sélection des champions terminée, et
+ * quand la partie s'éteint (fin de partie, écran de fin), on enchaîne sur une nouvelle sélection.
+ */
+let demoPhase = 'draft';
+let demoGameUp = false;
+let demoOfflineSince = 0;
+function demoGameRaw() {
+  if (!DEMO_FULL) return demo ? demo.snapshot() : null; // --draft : pas de partie ; démo seule : la partie
+  if (demoPhase === 'draft') {
+    if (!demoDraft.finished) return null;
+    demoPhase = 'game';
+    demo = new DemoGame({ speed: DEMO_SPEED, start: DEMO_START, spectator: DEMO_SPECTATOR });
+    demoGameUp = false;
+    demoOfflineSince = 0;
+  }
+  const raw = demo.snapshot();
+  if (raw) {
+    demoGameUp = true;
+    demoOfflineSince = 0;
+    return raw;
+  }
+  if (demoGameUp) {
+    demoGameUp = false;
+    demoOfflineSince = Date.now();
+  }
+  if (demoOfflineSince && Date.now() - demoOfflineSince > 12000) {
+    demoPhase = 'draft';
+    demo = null;
+    demoDraft.reset();
+    demoOfflineSince = 0;
+  }
+  return null;
+}
+
 function handle(res) {
   if (res.error) return onApiDown();
   if (!S.apiUp) {
@@ -525,7 +566,7 @@ function handle(res) {
 async function tick() {
   try {
     if (DEMO) {
-      const raw = demo ? demo.snapshot() : null; // pas de partie simulée avec --draft
+      const raw = demoGameRaw();
       handle(raw ? { status: 200, data: raw } : { error: 'demo' });
     } else {
       handle(await fetchLive());
@@ -944,7 +985,7 @@ function start() {
     }
 
     if (DEMO) champs = new Map(DEMO_CHAMPS); // la démo connaît ses champions, même sans Internet
-    if (DEMO_DRAFT) demoDraft = new DemoDraft({ speed: DEMO_SPEED, spectator: DEMO_SPECTATOR });
+    if (DEMO_DRAFT) demoDraft = new DemoDraft({ speed: DEMO_SPEED, spectator: DEMO_SPECTATOR, loop: !DEMO_FULL });
     else if (DEMO) demo = new DemoGame({ speed: DEMO_SPEED, start: DEMO_START, spectator: DEMO_SPECTATOR });
 
     server.once('error', reject);
@@ -959,7 +1000,9 @@ function start() {
       if (HOST === '0.0.0.0') {
         for (const ip of lanAddresses()) console.log(`  Sur le réseau       : http://${ip}:${PORT}/overlay`);
       }
-      if (DEMO_DRAFT) {
+      if (DEMO_FULL) {
+        console.log(`  MODE DÉMO COMPLET : sélection des champions, partie, écran de fin, puis on recommence (vitesse ×${DEMO_SPEED}${DEMO_SPECTATOR ? ', spectateur' : ''})`);
+      } else if (DEMO_DRAFT) {
         console.log(`  MODE DÉMO : sélection des champions en boucle, vitesse ×${DEMO_SPEED}${DEMO_SPECTATOR ? ', spectateur' : ''}`);
       } else if (DEMO) {
         console.log(`  MODE DÉMO : vitesse ×${DEMO_SPEED}, départ à ${clock(DEMO_START)}${DEMO_SPECTATOR ? ', spectateur' : ''}`);

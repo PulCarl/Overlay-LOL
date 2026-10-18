@@ -38,7 +38,7 @@ Une fois fabriquée, ouvrez le dossier **`dist/Overlay-LoL/`** et double-cliquez
 - Le dossier est autonome (Electron et toutes les pages sont dedans, environ 300 Mo). Copiez-le où vous voulez : Bureau, autre disque, clé USB.
 - Vos réglages et vos logos sont gardés dans un dossier `data/` **à côté du .exe**, avec un journal (`data/overlay.log`). Si le dossier de l'application n'est pas modifiable, par exemple dans `Program Files`, ils vont dans `%APPDATA%\Overlay LoL\data`.
 - Une seule fenêtre à la fois : relancer le .exe ramène la fenêtre déjà ouverte au premier plan.
-- Options (lancez-le depuis un terminal) : `Overlay-LoL.exe --demo` pour la partie simulée (voir « Mode démo »). `PORT` et `HOST` se règlent comme pour `node server.js`.
+- Options (lancez-le depuis un terminal) : `Overlay-LoL.exe --demo --full` pour la démo complète (voir « Mode démo »). `PORT` et `HOST` se règlent comme pour `node server.js`.
 - Le programme n'est pas signé numériquement : Windows peut afficher « Windows a protégé votre ordinateur ». Cliquez sur **Informations complémentaires**, puis **Exécuter quand même**.
 
 ### Le serveur seul, en .exe
@@ -55,7 +55,7 @@ Il n'y a rien d'autre à installer : le serveur n'utilise aucune dépendance (pa
 
 ### Tester sans lancer le jeu
 
-Double-cliquez sur **`start-demo.bat`**, ou lancez `Overlay-LoL.exe --demo` : une partie simulée tourne en boucle (voir « Mode démo »).
+Double-cliquez sur **`start-demo.bat`** : la démo complète enchaîne la sélection des champions (picks et bans), une partie, l'écran de fin, puis recommence (voir « Mode démo »). Avec l'application : `Overlay-LoL.exe --demo --full`.
 
 ### Fabriquer les programmes soi-même
 
@@ -152,6 +152,7 @@ Pendant la sélection des champions, l'overlay prend tout l'écran : fond aux co
 ## Mode démo
 
 ```bat
+node server.js --demo --full
 node server.js --demo
 node server.js --demo --speed=12 --start=900 --spectator
 ```
@@ -160,8 +161,9 @@ node server.js --demo --speed=12 --start=900 --spectator
 - `--start=900` : démarre à 900 secondes de jeu (15:00).
 - `--spectator` : simule une partie vue en spectateur (pas de vainqueur automatique).
 - `--draft` : simule uniquement la sélection des champions (picks et bans), en boucle et sans partie. Pratique pour régler le design : `node server.js --demo --draft --speed=4`.
+- `--full` : **démo complète**. Elle enchaîne la sélection des champions (bans, picks, finalisation), la partie avec les champions choisis, l'écran de fin, puis une nouvelle sélection. À vitesse ×12, un tour complet dure environ quatre minutes ; `--speed=60` le ramène à une minute et demie.
 
-La partie simulée se termine, reste en ligne quelques secondes, puis une nouvelle partie démarre.
+Sans `--full`, la partie simulée se termine, reste en ligne quelques secondes, puis une nouvelle partie démarre.
 
 ## Limites
 

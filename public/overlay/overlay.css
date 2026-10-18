@@ -1778,7 +1778,7 @@ body.preview {
   margin: 0 0 6px;
   font: 400 24px/1.12 var(--disp);
   text-transform: uppercase;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
 }
 .dr-card.empty .dr-champ {

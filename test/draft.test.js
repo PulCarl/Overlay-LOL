@@ -5,6 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { normalizeDraft, indexFromDdragon, indexFromClientSummary } = require('../lib/draft');
 const { DemoDraft, DEMO_CHAMPS } = require('../lib/demo-draft');
+const { DemoGame } = require('../lib/demo');
 const { parseLockfile, parseCommandLine } = require('../lib/lcu');
 
 const CHAMPS = new Map([
@@ -112,6 +113,51 @@ test('lockfile et ligne de commande du client', () => {
   const cmd = '"C:\\Riot Games\\League of Legends\\LeagueClientUx.exe" --app-port=51234 --remoting-auth-token=abc_DEF-123 --riotclient-app-port=1';
   assert.deepEqual(parseCommandLine(cmd), { port: 51234, password: 'abc_DEF-123', protocol: 'https' });
   assert.equal(parseCommandLine('rien d\'utile'), null);
+});
+
+/* Fait avancer un simulateur de sélection seconde par seconde (horloge simulée) et renvoie la dernière sélection vue. */
+function playDraft(demo, maxSeconds = 800) {
+  const real = Date.now;
+  let clock = real();
+  Date.now = () => clock;
+  let last = null;
+  let ended = false;
+  try {
+    demo.t0 = clock;
+    demo.speed = 1;
+    for (let i = 0; i < maxSeconds; i++) {
+      clock += 1000;
+      const raw = demo.snapshot();
+      if (!raw) {
+        ended = true;
+        break;
+      }
+      last = normalizeDraft(raw, DEMO_CHAMPS);
+    }
+  } finally {
+    Date.now = real;
+  }
+  return { last, ended };
+}
+
+test('démo complète : les champions du draft sont ceux de la partie qui suit', () => {
+  const { last } = playDraft(new DemoDraft({ loop: false }));
+  const picks = [...last.teams.ORDER.picks, ...last.teams.CHAOS.picks].map((p) => p.name);
+  const game = new DemoGame({ start: 0 }).snapshot().allPlayers.map((p) => p.championName);
+  assert.deepEqual(picks, game);
+  const players = [...last.teams.ORDER.picks, ...last.teams.CHAOS.picks].map((p) => p.player);
+  assert.deepEqual(players, new DemoGame({ start: 0 }).snapshot().allPlayers.map((p) => p.riotIdGameName));
+});
+
+test('sans boucle, la sélection simulée s\'arrête et attend reset()', () => {
+  const demo = new DemoDraft({ loop: false });
+  const { ended } = playDraft(demo);
+  assert.equal(ended, true);
+  assert.equal(demo.finished, true);
+  assert.equal(demo.snapshot(), null, 'reste éteinte tant qu\'on ne la relance pas');
+  demo.reset();
+  assert.equal(demo.finished, false);
+  assert.ok(demo.snapshot(), 'repart après reset()');
 });
 
 test('simulateur : une sélection complète, du premier ban au dernier pick', () => {

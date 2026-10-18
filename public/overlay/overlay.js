@@ -806,6 +806,13 @@
     ref.root.className = `dr-card ${ref.root.classList.contains('red') ? 'red' : 'blue'} ${p.state}${p.local ? ' local' : ''}`;
     setText(ref.pos, p.position || '');
     setText(ref.champ, p.name || '—');
+    // La police des titres est très large : on réduit le nom jusqu'à ce que son plus long mot tienne dans la colonne (140 px).
+    const longest = Math.max(1, ...String(p.name || '').split(/\s+/).map((w) => w.length));
+    const size = Math.max(11, Math.min(24, Math.floor(140 / (longest * 0.95))));
+    if (ref.size !== size) {
+      ref.size = size;
+      ref.champ.style.fontSize = size + 'px';
+    }
     setText(ref.who, p.player || '');
     setText(ref.state, p.state === 'active' ? 'Sélection…' : p.state === 'hover' ? 'Survol' : '');
     const key = p.key && S.ddragon ? p.key : '';

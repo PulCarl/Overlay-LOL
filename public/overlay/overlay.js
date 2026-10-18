@@ -45,6 +45,9 @@
   const IMG = {
     champion: (v, k) => `https://ddragon.leagueoflegends.com/cdn/${v}/img/champion/${k}.png`,
     item: (v, k) => `https://ddragon.leagueoflegends.com/cdn/${v}/img/item/${k}.png`,
+    spell: (v, k) => `https://ddragon.leagueoflegends.com/cdn/${v}/img/spell/${k}.png`,
+    // k : chemin donné par /api/runes (perk-images/Styles/…), sans version.
+    rune: (v, k) => `https://ddragon.leagueoflegends.com/cdn/img/${k}`,
   };
   const loadingArt = (k) => `https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${k}_0.jpg`;
 
@@ -100,7 +103,7 @@
       img.decoding = 'async';
       img.onload = () => box.classList.add('ok');
       img.onerror = () => img.remove();
-      img.src = kind === 'item' ? IMG.item(v, key) : IMG.champion(v, key);
+      img.src = (IMG[kind] || IMG.champion)(v, key);
       box.append(img);
       if (img.complete && img.naturalWidth) box.classList.add('ok');
     }
@@ -523,7 +526,46 @@
   let sidesKey = '';
   let sideRows = [];
 
-  /* Une ligne : portrait avec niveau (ou temps de réapparition), pseudo et K/D/A. */
+  /*
+   * Images des runes : le serveur les tire de Data Dragon (identifiant → chemin). On les demande une fois ;
+   * tant que la liste est vide (Data Dragon pas encore joignable), on réessaie de temps en temps.
+   */
+  const runePaths = new Map();
+  let runesTry = -Infinity;
+  function loadRunePaths() {
+    if (runePaths.size || performance.now() - runesTry < 20000) return;
+    runesTry = performance.now();
+    fetch('/api/runes')
+      .then((r) => r.json())
+      .then((d) => {
+        for (const [id, r] of Object.entries(d.runes || {})) runePaths.set(Number(id), r);
+      })
+      .catch(() => {});
+  }
+
+  /* Sorts d'invocateur et runes d'un joueur : deux petites colonnes, à l'intérieur de l'écran. */
+  function miniIcons(p) {
+    const box = el('div', 's-mini');
+    const spells = (p.spells || []).slice(0, 2);
+    if (spells.length) {
+      const col = el('div', 's-col');
+      for (const sp of spells) col.append(icon('spell', sp.key, sp.name, 'spell'));
+      box.append(col);
+    }
+    const r = p.runes || {};
+    const runes = [r.keystone, r.secondary].filter(Boolean);
+    if (runes.length) {
+      const col = el('div', 's-col');
+      runes.forEach((ref, i) => {
+        const info = runePaths.get(ref.id);
+        col.append(icon('rune', info && info.icon, ref.name, 'rune' + (i ? ' tree' : '')));
+      });
+      box.append(col);
+    }
+    return box;
+  }
+
+  /* Une ligne : portrait avec niveau (ou temps de réapparition), pseudo, K/D/A, sorts et runes. */
   function buildSideRow(p, side) {
     const root = el('div', 'srow ' + sideCls(side));
     const champ = icon('champ', p.champKey, p.champion || p.name, 'lg');
@@ -538,13 +580,15 @@
     const a = el('b', 'a', '0');
     kda.append(k, el('s', '', '/'), d, el('s', '', '/'), a);
     id.append(name, kda);
-    root.append(champ, id);
+    root.append(champ, id, miniIcons(p));
     return { root, name, k, d, a, lvl, resp };
   }
 
   function renderSides(g) {
-    const rosters = ['ORDER', 'CHAOS'].map((s) => g.teams[s].players.map((p) => p.champKey).join(','));
-    const key = [S.gameId, S.ddragon, ...rosters].join('|');
+    loadRunePaths();
+    // Les lignes sont refaites quand la composition, les sorts, les runes ou leurs images changent.
+    const rosters = ['ORDER', 'CHAOS'].map((s) => g.teams[s].players.map((p) => [p.champKey, JSON.stringify(p.spells), JSON.stringify(p.runes)].join(',')).join(';'));
+    const key = [S.gameId, S.ddragon, runePaths.size, ...rosters].join('|');
     if (key !== sidesKey) {
       sidesKey = key;
       sidesEl.textContent = '';

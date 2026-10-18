@@ -85,7 +85,7 @@ Pas de match sous la main ? Dans l'onglet **Affichage**, « Charger le match d'e
 - **Barre de score** en haut au centre
   - Plaque centrale : kills de chaque équipe, chrono et jauge de valeur des objets.
   - De chaque côté : logo, tag, nom et pastilles de série, puis un bandeau avec les tours, inhibiteurs, dragons (losanges colorés selon l'élément, mention « Âme » à 4), hérauts, barons et valeur des objets.
-- **Champions sur les côtés** : une colonne par équipe, la bleue à gauche et la rouge à droite, avec pour chaque joueur le portrait du champion, son niveau, son pseudo et son K/D/A. Un joueur mort se grise et son temps de réapparition remplace le niveau. Interrupteur « Champions sur les côtés » dans l'onglet Affichage du panneau.
+- **Champions sur les côtés** : une colonne par équipe, la bleue à gauche et la rouge à droite, avec pour chaque joueur le portrait du champion, son niveau, son pseudo, son K/D/A, ses deux sorts d'invocateur (Saut éclair, Embrasement…) et ses runes (rune principale et arbre secondaire). Un joueur mort se grise et son temps de réapparition remplace le niveau. Interrupteur « Champions sur les côtés » dans l'onglet Affichage du panneau.
 - **Fil d'actions** : kills (tueur → victime, assistances) et tours détruites, en petit, sous la colonne de gauche.
 - **Bandeaux d'objectifs** sous la barre : dragons (volés ou non), Nashor, Héraut, Atakhan, inhibiteurs, premier sang, triple, quadra et pentakill, ace.
 - **Tableau des joueurs** en bas au centre : deux colonnes de 5 lignes alignées par poste, avec champion, niveau, nom, K/D/A, objets et CS, et le temps de réapparition des joueurs morts. Affiché par défaut en mode spectateur.
@@ -265,8 +265,8 @@ Si vous lancez le serveur en cours de partie, l'historique n'est pas rejoué à 
 ### Limites
 
 - **L'or affiché est la valeur des objets**, pas l'or réel : l'API ne donne pas l'or des adversaires.
-- Pas de points de vie, pas de positions, pas de données de la carte : l'API locale ne les fournit pas.
-- Sans connexion Internet, les icônes de Data Dragon sont remplacées par des pastilles avec les initiales.
+- **Pas de points de vie ni de mana** pour les joueurs : l'API locale ne les donne que pour votre propre champion. Elle ne dit pas non plus quand un sort d'invocateur est lancé, donc **pas de chrono de recharge du Saut éclair**. Pas non plus de positions ni de données de la carte.
+- Sans connexion Internet, les icônes de Data Dragon (champions, objets, sorts, runes) sont remplacées par des pastilles avec les initiales.
 - **VALORANT n'est pas automatique** : manches, chrono, crédits et K/D/A sont saisis à la main, car le jeu ne les fournit pas au public. Le chrono n'est pas synchronisé avec celui du jeu : il se lance avec les boutons du panneau. Pas de points de vie, de bouclier ni d'armes, et pas de killfeed.
 
 ---

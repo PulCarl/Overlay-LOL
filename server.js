@@ -18,7 +18,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { spawn, spawnSync } = require('child_process');
 
-const { computeGame, computeMvp } = require('./lib/game');
+const { computeGame, computeMvp, indexFromRunes } = require('./lib/game');
 const { DemoGame } = require('./lib/demo');
 const { normalizeDraft, indexFromDdragon, indexFromClientSummary } = require('./lib/draft');
 const { LcuClient } = require('./lib/lcu');
@@ -384,8 +384,9 @@ async function loadDdragonVersion(first) {
     S.ddragon = null;
   }
   if (S.ddragon) {
-    log(`Data Dragon : version ${S.ddragon} (icônes des champions et des objets).`);
+    log(`Data Dragon : version ${S.ddragon} (icônes des champions, des objets et des runes).`);
     loadChampions();
+    loadRunes();
   } else {
     if (first) log('Data Dragon injoignable : l\'overlay affichera des initiales à la place des icônes. Nouvel essai dans 1 minute.');
     setTimeout(() => loadDdragonVersion(false), 60000).unref();
@@ -402,6 +403,20 @@ async function loadChampions() {
     log(`Champions : ${idx.size} chargés depuis Data Dragon.`);
   } catch (_) {
     setTimeout(loadChampions, 60000).unref();
+  }
+}
+
+/* Images des runes : { identifiant → { name, icon } }, remplies par Data Dragon (l'overlay les demande à /api/runes). */
+let runeIndex = {};
+async function loadRunes() {
+  try {
+    const idx = indexFromRunes(await fetchJson(`https://ddragon.leagueoflegends.com/cdn/${S.ddragon}/data/fr_FR/runesReforged.json`, 8000));
+    const n = Object.keys(idx).length;
+    if (!n) throw new Error('liste vide');
+    runeIndex = idx;
+    log(`Runes : ${n} chargées depuis Data Dragon.`);
+  } catch (_) {
+    setTimeout(loadRunes, 60000).unref();
   }
 }
 
@@ -782,6 +797,8 @@ async function handleApi(req, res, pathname) {
   const method = req.method;
 
   if (method === 'GET' && pathname === '/api/state') return sendJson(res, 200, publicState()), true;
+  // Images des runes (vide tant que Data Dragon n'a pas répondu) : l'overlay les demande une fois, pas à chaque mise à jour.
+  if (method === 'GET' && pathname === '/api/runes') return sendJson(res, 200, { runes: runeIndex }), true;
   // Dernière réponse brute du client pour la sélection des champions : sert à diagnostiquer (aucun identifiant dedans).
   if (method === 'GET' && pathname === '/api/draft/raw') {
     if (!S.lastRawDraft) return fail(res, 404, 'Aucune sélection des champions vue pour l\'instant.'), true;

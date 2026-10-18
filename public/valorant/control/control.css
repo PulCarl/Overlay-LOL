@@ -1,0 +1,234 @@
+/*
+ * Panneau de contrôle VALORANT : s'appuie sur la feuille de style du panneau LoL (/base/control.css)
+ * et ajoute ce qui lui manque : couleurs des deux équipes, chrono, joueurs, maps.
+ */
+
+:root {
+  --teal: #3de0c3;
+}
+
+.bar-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+.bar-actions #reset-all {
+  margin-left: 0;
+}
+
+/* Les deux équipes : vert-bleu à gauche, rouge à droite (comme l'overlay). */
+.team.left .team-band {
+  background: linear-gradient(90deg, #0f8f7b, var(--teal));
+  color: #021311;
+}
+.team.right .team-band {
+  background: var(--red-band);
+}
+.score.left {
+  --c: var(--teal);
+}
+.score.right {
+  --c: var(--red);
+}
+.btn.left {
+  background: rgba(61, 224, 195, 0.1);
+  border-color: var(--teal);
+  color: var(--teal);
+}
+.btn.left:hover {
+  background: rgba(61, 224, 195, 0.18);
+}
+.stepper.small output {
+  font-size: 32px;
+}
+
+/* ------------------------------------------------------------ chrono */
+
+.timer-box {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 14px;
+  background: var(--card2);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--purple);
+}
+.timer-read {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+.timer-read output {
+  font: 400 40px/1 var(--num);
+  letter-spacing: 0.04em;
+}
+.timer-read small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.phase-btns,
+.timer-ctl {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.timer-ctl .inline {
+  margin-left: auto;
+}
+.timer-ctl input[type='text'] {
+  width: 78px;
+  margin-left: 8px;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------ joueurs */
+
+.plist {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pc {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--card2);
+  border-left: 3px solid var(--c);
+}
+.players-card.left {
+  --c: var(--teal);
+}
+.players-card.right {
+  --c: var(--red);
+}
+.pc-top,
+.pc-bot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.pc-top select {
+  flex: 0 0 168px;
+  width: 168px;
+}
+.pc-top input[type='text'] {
+  flex: 1;
+  min-width: 120px;
+}
+.pc .toggle {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  font-size: 18px;
+}
+.pc .toggle.on {
+  background: rgba(255, 77, 112, 0.2);
+  border-color: var(--red);
+  color: var(--red);
+}
+.pc .toggle.ult.on {
+  background: rgba(197, 144, 255, 0.2);
+  border-color: var(--accent-l);
+  color: var(--accent-l);
+}
+.mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.mini b {
+  width: 14px;
+  color: var(--muted);
+  font: 400 12px var(--num);
+}
+.mini button {
+  width: 28px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--text);
+  font: 600 16px/1 var(--txt);
+  cursor: pointer;
+}
+.mini button:hover {
+  border-color: var(--line-strong);
+}
+.mini output {
+  min-width: 26px;
+  text-align: center;
+  font: 700 17px var(--txt);
+  font-variant-numeric: tabular-nums;
+}
+.pc .cred {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.pc .cred input[type='number'] {
+  width: 92px;
+  margin: 0;
+}
+
+/* ------------------------------------------------------------ maps */
+
+.maplist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.maprow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 8px 10px;
+  background: var(--card2);
+  border-left: 3px solid var(--purple);
+}
+.maprow .num {
+  flex: none;
+  width: 22px;
+  color: var(--muted);
+  font: 400 15px var(--num);
+}
+.maprow select {
+  flex: 1;
+  min-width: 130px;
+  width: auto;
+}
+.maprow .cur {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.maprow .cur input {
+  accent-color: var(--purple);
+}
+.maprow .res {
+  min-width: 70px;
+  font: 700 14px var(--txt);
+  text-align: right;
+}
+.maprow .res.left {
+  color: var(--teal);
+}
+.maprow .res.right {
+  color: var(--red);
+}

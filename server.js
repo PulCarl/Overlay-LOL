@@ -94,7 +94,8 @@ const DEFAULT_CONFIG = {
   series: { format: 3, blue: 0, red: 0, autoCount: true },
   // players: null = automatique (affiché seulement en mode spectateur).
   // draft : affiche les picks et bans pendant la sélection des champions.
-  display: { mode: 'player', scoreboard: true, feed: true, banners: true, players: null, sponsors: true, draft: true, scale: 1 },
+  // sides : les champions de chaque équipe sur les côtés de l'écran.
+  display: { mode: 'player', scoreboard: true, feed: true, banners: true, players: null, sides: true, sponsors: true, draft: true, scale: 1 },
   sponsors: [],
   sponsorInterval: 12,
   presets: [],
@@ -140,7 +141,7 @@ function applyConfigPatch(cfg, p) {
   if (isObj(p.display)) {
     const d = p.display;
     if ('mode' in d && ['player', 'spectator'].includes(d.mode)) cfg.display.mode = d.mode;
-    for (const k of ['scoreboard', 'feed', 'banners', 'sponsors', 'draft']) if (k in d) cfg.display[k] = !!d[k];
+    for (const k of ['scoreboard', 'feed', 'banners', 'sides', 'sponsors', 'draft']) if (k in d) cfg.display[k] = !!d[k];
     if ('players' in d) cfg.display.players = d.players === null ? null : !!d.players;
     if ('scale' in d) {
       const n = Number(d.scale);

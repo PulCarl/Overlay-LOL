@@ -89,12 +89,18 @@ h1 {
   list-style: none;
 }
 
+/* Les cartes d'une même ligne ont la même hauteur, quelle que soit la longueur de leur texte. */
+.games > li {
+  display: flex;
+}
+
 .game {
   --a1: #4802de;
   --a2: #9e42ed;
   --cut: 22px;
   position: relative;
   display: block;
+  flex: 1;
   width: 100%;
   padding: 2px; /* épaisseur du liseré en dégradé */
   border: 0;

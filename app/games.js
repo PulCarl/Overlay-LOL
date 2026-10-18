@@ -5,7 +5,7 @@
  *
  * Pour ajouter un jeu : une entrée dans GAMES avec `status: 'ready'` et une fonction `start()`
  * qui démarre son serveur et renvoie l'adresse de son panneau de contrôle ({ url }).
- * Tant qu'un jeu est en `status: 'soon'`, il est affiché grisé et on ne peut pas le choisir.
+ * Un jeu en `status: 'soon'` est affiché grisé « Bientôt » et on ne peut pas le choisir.
  * Ce fichier ne dépend pas d'Electron : il est testé avec « npm test ».
  */
 
@@ -35,10 +35,15 @@ const GAMES = [
     id: 'valorant',
     name: 'VALORANT',
     short: 'VAL',
-    tagline: 'L\'overlay arrive bientôt',
-    status: 'soon',
+    tagline: 'Score, manches, maps, joueurs et écran de fin, pilotés depuis le panneau',
+    status: 'ready',
     title: 'Overlay VALORANT · Panneau de contrôle',
     accent: 'rouge',
+    async start() {
+      const server = require('../valorant-server.js');
+      const info = await server.start(); // les erreurs (port pris…) sont déjà en français
+      return { url: `http://127.0.0.1:${info.port}/control` };
+    },
   },
 ];
 

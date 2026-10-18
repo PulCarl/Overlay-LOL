@@ -517,6 +517,62 @@
     }
   }
 
+  /* ------------------------------------------------ champions sur les côtés */
+
+  const sidesEl = $('sides');
+  let sidesKey = '';
+  let sideRows = [];
+
+  /* Une ligne : portrait avec niveau (ou temps de réapparition), pseudo et K/D/A. */
+  function buildSideRow(p, side) {
+    const root = el('div', 'srow ' + sideCls(side));
+    const champ = icon('champ', p.champKey, p.champion || p.name, 'lg');
+    const lvl = el('b', 'lvl', p.level);
+    const resp = el('span', 'resp');
+    champ.append(lvl, resp);
+    const id = el('div', 's-id');
+    const name = el('span', 'pn', p.name);
+    const kda = el('span', 'kda');
+    const k = el('b', 'k', '0');
+    const d = el('b', 'd', '0');
+    const a = el('b', 'a', '0');
+    kda.append(k, el('s', '', '/'), d, el('s', '', '/'), a);
+    id.append(name, kda);
+    root.append(champ, id);
+    return { root, name, k, d, a, lvl, resp };
+  }
+
+  function renderSides(g) {
+    const rosters = ['ORDER', 'CHAOS'].map((s) => g.teams[s].players.map((p) => p.champKey).join(','));
+    const key = [S.gameId, S.ddragon, ...rosters].join('|');
+    if (key !== sidesKey) {
+      sidesKey = key;
+      sidesEl.textContent = '';
+      sideRows = [];
+      const blue = el('div', 'scol blue');
+      const red = el('div', 'scol red');
+      for (const [side, col] of [['ORDER', blue], ['CHAOS', red]]) {
+        g.teams[side].players.forEach((p) => {
+          const r = buildSideRow(p, side);
+          sideRows.push({ side, p: p.index, ...r });
+          col.append(r.root);
+        });
+      }
+      sidesEl.append(blue, red);
+    }
+    for (const c of sideRows) {
+      const p = g.teams[c.side].players.find((x) => x.index === c.p);
+      if (!p) continue;
+      setText(c.name, p.name);
+      setText(c.k, p.kills);
+      setText(c.d, p.deaths);
+      setText(c.a, p.assists);
+      setText(c.lvl, p.level);
+      setText(c.resp, p.isDead && p.respawn > 0 ? p.respawn : '');
+      c.root.classList.toggle('dead', !!p.isDead);
+    }
+  }
+
   /* ------------------------------------------------------------------ sponsors */
 
   const sponsorEl = $('sponsor');
@@ -921,6 +977,7 @@
       }
       renderScorebar(s.game);
       if (showPlayers()) renderPlayers(s.game);
+      if (cfg.display.sides) renderSides(s.game);
     }
     if (!cfg.display.banners) queue.length = 0;
 
@@ -930,6 +987,7 @@
     bar.classList.toggle('off', !(hud && cfg.display.scoreboard));
     feedEl.classList.toggle('off', !(hud && cfg.display.feed));
     bannersEl.classList.toggle('off', !(hud && cfg.display.banners));
+    sidesEl.classList.toggle('off', !(hud && cfg.display.sides));
     playersEl.classList.toggle('off', !(hud && showPlayers()));
     sponsorEl.classList.toggle('off', !(cfg.display.sponsors && sponsorItems().length && !endVisible && !draftOn && !VIEW_DRAFT));
     hint.classList.toggle('on', PREVIEW && (VIEW_DRAFT ? !draftOn : !live && !endVisible && !draftOn));

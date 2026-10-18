@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Overlay VALORANT · Panneau de contrôle</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/shared/fonts.css">
+  <link rel="stylesheet" href="/base/control.css">
+  <link rel="stylesheet" href="/control/control.css">
+</head>
+<body>
+  <div class="chrome">
+  <header class="appbar">
+    <button class="btn small" id="back-games" type="button" hidden title="Revenir au choix du jeu (l'overlay reste actif dans OBS)">← Jeux</button>
+    <div class="stat"><i class="dot" id="conn-dot"></i><b id="conn-text">Connexion…</b></div>
+    <div class="stat" title="Manche en cours"><span aria-hidden="true">🎯</span><b id="status-text">…</b><em class="badge" id="demo-badge" hidden>Démo</em></div>
+    <button class="addr" id="addr" type="button" title="Copier l'adresse de l'overlay pour OBS"><span class="muted">Overlay :</span> <b id="addr-text">localhost:3001</b></button>
+    <span class="bar-actions">
+      <button class="btn small" id="undo" type="button" title="Annule la dernière action importante (manche gagnée, fin de map, échange des côtés…)">↶ Annuler</button>
+      <button class="btn danger small" id="reset-all" type="button" title="Remet le match à zéro (les presets sont gardés)">⚠️ Réinitialiser</button>
+    </span>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button type="button" role="tab" data-tab="match" aria-selected="true">Match</button>
+    <button type="button" role="tab" data-tab="players" aria-selected="false">Joueurs</button>
+    <button type="button" role="tab" data-tab="maps" aria-selected="false">Maps</button>
+    <button type="button" role="tab" data-tab="teams" aria-selected="false">Équipes</button>
+    <button type="button" role="tab" data-tab="display" aria-selected="false">Affichage</button>
+    <button type="button" role="tab" data-tab="obs" aria-selected="false">OBS</button>
+    <span class="saved" id="saved">Enregistré ✓</span>
+  </nav>
+  </div>
+
+  <main class="pages">
+
+    <!-- ============================================================ Match -->
+    <div class="page" id="tab-match" role="tabpanel">
+
+      <section class="card">
+        <div class="card-head">
+          <h2><span aria-hidden="true">🛡️</span> Équipes</h2>
+          <button class="btn small" id="swap" type="button" title="Échange les équipes de gauche et de droite avec leurs scores et leurs joueurs">⇄ Échanger les côtés</button>
+        </div>
+        <div class="teams">
+          <div class="team left" data-slot="left">
+            <div class="team-band">Équipe de gauche</div>
+            <div class="team-body">
+              <div class="logo-row">
+                <div class="logo-prev" data-f="logo-prev"></div>
+                <div class="logo-actions">
+                  <label class="btn small file">📁 Choisir<input type="file" data-f="logo-file" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
+                  <button class="btn small ghost" type="button" data-act="logo-clear">Retirer</button>
+                </div>
+              </div>
+              <label class="fld">Équipe enregistrée
+                <select data-f="preset"><option value="">— Manuel —</option></select>
+              </label>
+              <div class="name-row">
+                <label class="fld grow">Nom<input type="text" data-f="name" maxlength="40" placeholder="Nom de l'équipe" autocomplete="off"></label>
+                <label class="fld tag">Tag<input type="text" data-f="tag" maxlength="4" placeholder="ALP" autocomplete="off"></label>
+                <button class="btn icon" type="button" data-save-preset="left" title="Enregistrer cette équipe dans les presets">💾</button>
+              </div>
+              <label class="fld">Sous-titre <small>(facultatif : région, seed…)</small>
+                <input type="text" data-f="sub" maxlength="24" placeholder="AMER #1" autocomplete="off">
+              </label>
+            </div>
+          </div>
+          <div class="team right" data-slot="right">
+            <div class="team-band">Équipe de droite</div>
+            <div class="team-body">
+              <div class="logo-row">
+                <div class="logo-prev" data-f="logo-prev"></div>
+                <div class="logo-actions">
+                  <label class="btn small file">📁 Choisir<input type="file" data-f="logo-file" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
+                  <button class="btn small ghost" type="button" data-act="logo-clear">Retirer</button>
+                </div>
+              </div>
+              <label class="fld">Équipe enregistrée
+                <select data-f="preset"><option value="">— Manuel —</option></select>
+              </label>
+              <div class="name-row">
+                <label class="fld grow">Nom<input type="text" data-f="name" maxlength="40" placeholder="Nom de l'équipe" autocomplete="off"></label>
+                <label class="fld tag">Tag<input type="text" data-f="tag" maxlength="4" placeholder="OME" autocomplete="off"></label>
+                <button class="btn icon" type="button" data-save-preset="right" title="Enregistrer cette équipe dans les presets">💾</button>
+              </div>
+              <label class="fld">Sous-titre <small>(facultatif : région, seed…)</small>
+                <input type="text" data-f="sub" maxlength="24" placeholder="EMEA #4" autocomplete="off">
+              </label>
+            </div>
+          </div>
+        </div>
+        <p class="hint">Chaque changement est enregistré tout de suite. Tag : 3 ou 4 lettres.</p>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2><span aria-hidden="true">🎯</span> Manche</h2></div>
+        <div class="series">
+          <div class="score left" data-slot="left">
+            <span class="score-name" data-f="label">Gauche</span>
+            <div class="stepper">
+              <button class="btn round" type="button" data-act="dec" aria-label="Retirer une manche">−</button>
+              <output data-f="value">0</output>
+              <button class="btn round" type="button" data-act="inc" aria-label="Ajouter une manche">+</button>
+            </div>
+          </div>
+          <div class="bo">
+            <span class="bo-title">Manche n°</span>
+            <div class="stepper small">
+              <button class="btn round" type="button" id="round-dec" aria-label="Manche précédente">−</button>
+              <output id="round-number">1</output>
+              <button class="btn round" type="button" id="round-inc" aria-label="Manche suivante">+</button>
+            </div>
+          </div>
+          <div class="score right" data-slot="right">
+            <span class="score-name" data-f="label">Droite</span>
+            <div class="stepper">
+              <button class="btn round" type="button" data-act="dec" aria-label="Retirer une manche">−</button>
+              <output data-f="value">0</output>
+              <button class="btn round" type="button" data-act="inc" aria-label="Ajouter une manche">+</button>
+            </div>
+          </div>
+        </div>
+        <div class="split">
+          <button class="btn left" id="won-left" type="button">Manche gagnée · Gauche</button>
+          <button class="btn red" id="won-right" type="button">Manche gagnée · Droite</button>
+        </div>
+        <p class="hint">« Manche gagnée » ajoute un point, passe à la manche suivante et remet tous les joueurs en vie. Le bouton « Annuler » en haut revient en arrière.</p>
+
+        <div class="timer-box">
+          <div class="timer-read"><output id="timer-out">0:00</output><small id="timer-phase"></small></div>
+          <div class="phase-btns">
+            <button class="btn small" type="button" data-phase="buy">Achat · 0:30</button>
+            <button class="btn small" type="button" data-phase="live">Manche · 1:40</button>
+            <button class="btn small" type="button" data-phase="planted">Spike posé · 0:45</button>
+            <button class="btn small ghost" type="button" data-phase="over">Fin de manche</button>
+          </div>
+          <div class="timer-ctl">
+            <button class="btn small" type="button" id="timer-toggle">⏸ Pause</button>
+            <button class="btn small ghost" type="button" id="timer-reset">↺ Remettre</button>
+            <label class="inline">Régler à <input type="text" id="timer-set" value="1:40" inputmode="numeric" maxlength="5" aria-label="Durée du chrono, minutes et secondes"></label>
+            <button class="btn small ghost" type="button" id="timer-apply">Régler</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2><span aria-hidden="true">🏆</span> Série</h2></div>
+        <div class="series">
+          <div class="score left" data-slot="left">
+            <span class="score-name" data-f="label">Gauche</span>
+            <div class="stepper">
+              <button class="btn round" type="button" data-sact="dec" aria-label="Retirer une map gagnée">−</button>
+              <output data-s="value">0</output>
+              <button class="btn round" type="button" data-sact="inc" aria-label="Ajouter une map gagnée">+</button>
+            </div>
+          </div>
+          <div class="bo" id="format" role="radiogroup" aria-label="Format de la série">
+            <span class="bo-title">Meilleur des</span>
+            <div class="bo-opts">
+              <label><input type="radio" name="format" value="1"><i></i><span>1</span></label>
+              <label><input type="radio" name="format" value="3"><i></i><span>3</span></label>
+              <label><input type="radio" name="format" value="5"><i></i><span>5</span></label>
+            </div>
+          </div>
+          <div class="score right" data-slot="right">
+            <span class="score-name" data-f="label">Droite</span>
+            <div class="stepper">
+              <button class="btn round" type="button" data-sact="dec" aria-label="Retirer une map gagnée">−</button>
+              <output data-s="value">0</output>
+              <button class="btn round" type="button" data-sact="inc" aria-label="Ajouter une map gagnée">+</button>
+            </div>
+          </div>
+        </div>
+        <div class="split">
+          <button class="btn primary" id="end-map" type="button">🏁 Terminer la map</button>
+          <button class="btn" id="end-hide" type="button">🎮 Revenir au jeu</button>
+        </div>
+        <div class="split">
+          <button class="btn left" id="end-left" type="button">Map gagnée · Gauche</button>
+          <button class="btn red" id="end-right" type="button">Map gagnée · Droite</button>
+        </div>
+        <p class="hint" id="end-info"></p>
+        <p class="hint">« Terminer la map » enregistre le score, ajoute une map à la série, affiche l'écran de fin, puis prépare la map suivante (joueurs gardés, statistiques remises à zéro). À 13 manches avec 2 d'avance, le gagnant est trouvé tout seul ; sinon, utilisez « Map gagnée ».</p>
+        <div class="row">
+          <button class="btn small ghost" id="end-preview" type="button">📊 Aperçu de l'écran de fin</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============================================================ Joueurs -->
+    <div class="page" id="tab-players" role="tabpanel" hidden>
+      <section class="card">
+        <div class="card-head">
+          <h2><span aria-hidden="true">👥</span> Joueurs</h2>
+          <button class="btn small ghost" id="players-reset" type="button" title="Tout le monde en vie, statistiques à zéro, 800 crédits">↺ Remettre à zéro</button>
+        </div>
+        <p class="hint first">Un joueur sans nom ni agent n'est pas affiché. Cliquez sur ☠ pour marquer un joueur mort (sa ligne se grise dans l'overlay).</p>
+      </section>
+      <section class="card players-card left">
+        <div class="card-head"><h2 id="pl-title-left">Équipe de gauche</h2></div>
+        <div class="plist" id="plist-left"></div>
+      </section>
+      <section class="card players-card right">
+        <div class="card-head"><h2 id="pl-title-right">Équipe de droite</h2></div>
+        <div class="plist" id="plist-right"></div>
+      </section>
+    </div>
+
+    <!-- ============================================================ Maps -->
+    <div class="page" id="tab-maps" role="tabpanel" hidden>
+      <section class="card">
+        <div class="card-head">
+          <h2><span aria-hidden="true">🗺️</span> Maps de la série</h2>
+          <button class="btn small" id="map-add" type="button">+ Ajouter une map</button>
+        </div>
+        <div class="maplist" id="maplist"></div>
+        <p class="hint">Choisissez la map et qui l'a choisie. La ligne marquée « En cours » est celle que l'overlay met en avant ; elle avance toute seule quand vous terminez une map.</p>
+      </section>
+      <section class="card">
+        <div class="card-head"><h2><span aria-hidden="true">📣</span> Événement</h2></div>
+        <div class="split">
+          <label class="fld">Nom<input type="text" id="event-name" maxlength="60" placeholder="Champions de démonstration" autocomplete="off"></label>
+          <label class="fld">Phase<input type="text" id="event-stage" maxlength="60" placeholder="Finale" autocomplete="off"></label>
+        </div>
+        <p class="hint">Affichés en haut à droite de l'overlay.</p>
+      </section>
+    </div>
+
+    <!-- ============================================================ Équipes (presets) -->
+    <div class="page" id="tab-teams" role="tabpanel" hidden>
+      <section class="card">
+        <div class="card-head"><h2><span aria-hidden="true">💾</span> Presets d'équipes</h2></div>
+        <p class="hint first">Enregistrez une équipe (nom, tag, sous-titre, logo) pour la recharger en un clic à gauche ou à droite, depuis l'onglet Match ou ici.</p>
+        <div class="split">
+          <button class="btn left" type="button" data-save-preset="left">Enregistrer l'équipe de gauche</button>
+          <button class="btn red" type="button" data-save-preset="right">Enregistrer l'équipe de droite</button>
+        </div>
+        <div id="preset-list" class="preset-list"></div>
+      </section>
+    </div>
+
+    <!-- ============================================================ Affichage -->
+    <div class="page" id="tab-display" role="tabpanel" hidden>
+      <section class="card">
+        <div class="card-head"><h2><span aria-hidden="true">👁️</span> Éléments affichés</h2></div>
+        <div class="toggles">
+          <label class="switch"><input type="checkbox" data-disp="scorebar"><i></i><span>Barre de score</span></label>
+          <label class="switch"><input type="checkbox" data-disp="maps"><i></i><span>Bandeau des maps</span></label>
+          <label class="switch"><input type="checkbox" data-disp="players"><i></i><span>Panneaux des joueurs</span></label>
+          <label class="switch"><input type="checkbox" data-disp="event"><i></i><span>Nom de l'événement</span></label>
+        </div>
+        <div class="row">
+          <label class="slider">Échelle <output id="scale-out">100 %</output>
+            <input type="range" id="scale" min="50" max="150" step="5" value="100">
+          </label>
+        </div>
+        <p class="hint">L'écran de fin remplace tout le reste tant qu'il est affiché.</p>
+      </section>
+      <section class="card">
+        <div class="card-head"><h2><span aria-hidden="true">✨</span> Essayer</h2></div>
+        <p class="hint first">Charge un match d'exemple (équipes et joueurs fictifs) pour voir l'overlay rempli. « Annuler » en haut ramène votre match.</p>
+        <button class="btn" id="load-demo" type="button">Charger le match d'exemple</button>
+      </section>
+    </div>
+
+    <!-- ============================================================ OBS -->
+    <div class="page" id="tab-obs" role="tabpanel" hidden>
+      <section class="card">
+        <div class="card-head"><h2><span aria-hidden="true">🔗</span> Adresses pour OBS</h2></div>
+        <p class="hint first">Dans OBS : <b>Sources → + → Navigateur</b>, taille <b>1920 × 1080</b>, avec cette adresse :</p>
+        <div class="copy">
+          <input type="text" id="url-overlay" readonly>
+          <button class="btn primary" type="button" data-copy="url-overlay">Copier</button>
+        </div>
+        <p class="hint">Panneau de contrôle (pour l'ouvrir dans un navigateur) :</p>
+        <div class="copy">
+          <input type="text" id="url-control" readonly>
+          <button class="btn" type="button" data-copy="url-control">Copier</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2><span aria-hidden="true">📺</span> Aperçu en direct</h2></div>
+        <div class="preview" id="preview">
+          <iframe id="preview-frame" src="/overlay?preview=1" title="Aperçu de l'overlay" tabindex="-1"></iframe>
+        </div>
+        <p class="hint">Ce que verra OBS (le fond à rayures n'existe que dans cet aperçu).</p>
+      </section>
+
+      <p class="legal">Ce projet n'est ni approuvé ni affilié à Riot Games. VALORANT est une marque de Riot Games, Inc. ; les illustrations des agents et des maps leur appartiennent et sont chargées depuis <a href="https://valorant-api.com" target="_blank" rel="noopener noreferrer">valorant-api.com</a>, une API communautaire.</p>
+    </div>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/control/control.js"></script>
+</body>
+</html>

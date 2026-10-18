@@ -58,7 +58,7 @@ async function main() {
   fs.mkdirSync(path.join(stage, 'app'), { recursive: true });
 
   step('Préparation des fichiers');
-  for (const item of ['server.js', 'lib', 'public']) fs.cpSync(path.join(ROOT, item), path.join(stage, item), { recursive: true });
+  for (const item of ['server.js', 'valorant-server.js', 'lib', 'public']) fs.cpSync(path.join(ROOT, item), path.join(stage, item), { recursive: true });
   for (const item of ['main.js', 'games.js', 'preload.js', 'launcher']) {
     fs.cpSync(path.join(ROOT, 'app', item), path.join(stage, 'app', item), { recursive: true });
   }

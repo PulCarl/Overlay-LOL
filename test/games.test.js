@@ -25,9 +25,9 @@ test('un jeu prêt sait démarrer, un jeu à venir non', () => {
   }
 });
 
-test('LoL et Valorant sont proposés, LoL est prêt', () => {
+test('LoL et Valorant sont proposés et prêts', () => {
   assert.equal(games.find('lol').status, 'ready');
-  assert.equal(games.find('valorant').status, 'soon');
+  assert.equal(games.find('valorant').status, 'ready');
   assert.equal(games.find('nimporte-quoi'), null);
 });
 
@@ -40,7 +40,13 @@ test('la liste envoyée à la page ne contient pas de fonctions', () => {
 
 test('un jeu inconnu ou pas encore disponible ne démarre pas', async () => {
   await assert.rejects(games.launch('nimporte-quoi'), /inconnu/);
-  await assert.rejects(games.launch('valorant'), /pas encore disponible/);
+  // Un jeu « bientôt » (ajouté le temps du test) ne démarre pas non plus.
+  games.GAMES.push({ id: 'futur', name: 'Futur', short: 'FUT', tagline: 'Bientôt', status: 'soon', title: 'Futur', accent: 'violet' });
+  try {
+    await assert.rejects(games.launch('futur'), /pas encore disponible/);
+  } finally {
+    games.GAMES.pop();
+  }
   assert.equal(games.anyRunning(), false);
 });
 
@@ -50,8 +56,18 @@ test('le dernier jeu utilisé est retenu, et seulement s\'il est valide', () => 
     assert.equal(games.loadLast(dir), null);
     games.saveLast(dir, 'lol');
     assert.equal(games.loadLast(dir), 'lol');
-    games.saveLast(dir, 'valorant'); // pas encore disponible : on ne le propose pas comme « dernier utilisé »
+    games.saveLast(dir, 'valorant');
+    assert.equal(games.loadLast(dir), 'valorant');
+    games.saveLast(dir, 'nimporte-quoi');
     assert.equal(games.loadLast(dir), null);
+    // Un jeu « bientôt » n'est pas proposé comme « dernier utilisé ».
+    games.GAMES.push({ id: 'futur', name: 'Futur', short: 'FUT', tagline: 'Bientôt', status: 'soon', title: 'Futur', accent: 'violet' });
+    try {
+      games.saveLast(dir, 'futur');
+      assert.equal(games.loadLast(dir), null);
+    } finally {
+      games.GAMES.pop();
+    }
     fs.writeFileSync(path.join(dir, 'launcher.json'), '{ pas du json');
     assert.equal(games.loadLast(dir), null);
   } finally {

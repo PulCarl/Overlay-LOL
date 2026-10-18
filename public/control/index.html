@@ -98,6 +98,7 @@
               <label><input type="radio" name="format" value="1"><i></i><span>1</span></label>
               <label><input type="radio" name="format" value="3"><i></i><span>3</span></label>
               <label><input type="radio" name="format" value="5"><i></i><span>5</span></label>
+              <label><input type="radio" name="format" value="7"><i></i><span>7</span></label>
             </div>
           </div>
           <div class="score red" data-slot="red">
@@ -129,6 +130,19 @@
         <p class="hint" id="end-info"></p>
         <p class="hint">En mode joueur, l'écran de fin s'affiche tout seul à la fin de la partie. En spectateur, le jeu ne donne pas le vainqueur : cliquez sur « Victoire bleue » ou « Victoire rouge ».</p>
       </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2><span aria-hidden="true">🚫</span> Picks et bans</h2>
+          <div class="seg" id="draft-mode" role="radiogroup" aria-label="Affichage des picks et bans">
+            <label><input type="radio" name="draft-mode" value="auto"><span>Auto</span></label>
+            <label><input type="radio" name="draft-mode" value="show"><span>Afficher</span></label>
+            <label><input type="radio" name="draft-mode" value="hide"><span>Masquer</span></label>
+          </div>
+        </div>
+        <p class="hint first" id="draft-info"></p>
+        <p class="hint">« Auto » affiche les picks et bans pendant la sélection des champions, puis les efface. « Afficher » force l'affichage, avec la dernière sélection vue. Les données viennent de votre client LoL : seule la sélection que <b>votre</b> client affiche est disponible.</p>
+      </section>
     </div>
 
     <!-- ============================================================ Affichage -->
@@ -153,6 +167,7 @@
           <label class="switch"><input type="checkbox" data-disp="banners"><i></i><span>Bandeaux d'objectifs</span></label>
           <label class="switch"><input type="checkbox" data-disp="players"><i></i><span>Panneau des joueurs <small id="players-auto"></small></span></label>
           <label class="switch"><input type="checkbox" data-disp="sponsors"><i></i><span>Sponsors</span></label>
+          <label class="switch"><input type="checkbox" data-disp="draft"><i></i><span>Picks et bans (pendant la sélection)</span></label>
         </div>
         <div class="row">
           <label class="slider">Échelle <output id="scale-out">100 %</output>
@@ -194,12 +209,17 @@
           <input type="text" id="url-overlay" readonly>
           <button class="btn primary" type="button" data-copy="url-overlay">Copier</button>
         </div>
+        <p class="hint">Source réservée aux picks et bans, pour la scène de sélection des champions (elle n'affiche rien d'autre) :</p>
+        <div class="copy">
+          <input type="text" id="url-draft" readonly>
+          <button class="btn" type="button" data-copy="url-draft">Copier</button>
+        </div>
         <p class="hint">Panneau de contrôle (pour l'ouvrir dans un navigateur) :</p>
         <div class="copy">
           <input type="text" id="url-control" readonly>
           <button class="btn" type="button" data-copy="url-control">Copier</button>
         </div>
-        <p class="hint">Picks et bans : utilisez le lien d'overlay fourni par <a href="https://drafter.lol/" target="_blank" rel="noopener noreferrer">drafter.lol</a>, dans une source navigateur séparée (par exemple sur la scène de sélection des champions).</p>
+        <p class="hint">Pour un draft de tournoi simulé ou arbitré à part, <a href="https://drafter.lol/" target="_blank" rel="noopener noreferrer">drafter.lol</a> reste utilisable dans une source navigateur séparée.</p>
       </section>
 
       <section class="card">
@@ -210,7 +230,7 @@
         <p class="hint">Ce que verra OBS (le fond à rayures n'existe que dans cet aperçu).</p>
       </section>
 
-      <p class="legal">Ce projet n'est ni approuvé ni affilié à Riot Games. League of Legends est une marque de Riot Games, Inc.</p>
+      <p class="legal">Ce projet n'est ni approuvé ni affilié à Riot Games. League of Legends est une marque de Riot Games, Inc. Icônes des objectifs : Lorc et Delapouite, <a href="https://game-icons.net" target="_blank" rel="noopener noreferrer">game-icons.net</a> (CC BY 3.0).</p>
     </div>
   </main>
 

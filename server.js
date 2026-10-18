@@ -20,6 +20,9 @@ const { spawn, spawnSync } = require('child_process');
 
 const { computeGame, computeMvp } = require('./lib/game');
 const { DemoGame } = require('./lib/demo');
+const { normalizeDraft, indexFromDdragon, indexFromClientSummary } = require('./lib/draft');
+const { LcuClient } = require('./lib/lcu');
+const { DemoDraft, DEMO_CHAMPS } = require('./lib/demo-draft');
 
 /*
  * Version .exe : le programme est un « exécutable unique » Node.js (SEA). Les pages de
@@ -50,6 +53,12 @@ const DEMO = hasFlag('demo');
 const DEMO_SPEED = Math.max(1, numOpt('speed', 12));
 const DEMO_START = Math.max(0, numOpt('start', 0));
 const DEMO_SPECTATOR = hasFlag('spectator');
+// --draft : la démo ne simule que la sélection des champions (picks et bans), en boucle, sans partie.
+// --full : démo complète : sélection des champions, puis partie, puis écran de fin, puis on recommence.
+const DEMO_FULL = DEMO && hasFlag('full');
+const DEMO_DRAFT = DEMO && (hasFlag('draft') || DEMO_FULL);
+// Lecture des picks et bans dans le client LoL ; --no-lcu (ou NO_LCU=1) la désactive.
+const LCU_ENABLED = !DEMO && !hasFlag('no-lcu') && !process.env.NO_LCU;
 
 const HOST = process.env.HOST || '127.0.0.1';
 const PORT = Number(process.env.PORT) || 3000;
@@ -84,7 +93,8 @@ const DEFAULT_CONFIG = {
   },
   series: { format: 3, blue: 0, red: 0, autoCount: true },
   // players: null = automatique (affiché seulement en mode spectateur).
-  display: { mode: 'player', scoreboard: true, feed: true, banners: true, players: null, sponsors: true, scale: 1 },
+  // draft : affiche les picks et bans pendant la sélection des champions.
+  display: { mode: 'player', scoreboard: true, feed: true, banners: true, players: null, sponsors: true, draft: true, scale: 1 },
   sponsors: [],
   sponsorInterval: 12,
   presets: [],
@@ -121,7 +131,7 @@ function applyConfigPatch(cfg, p) {
 
   if (isObj(p.series)) {
     const s = p.series;
-    if ('format' in s && [1, 3, 5].includes(Number(s.format))) cfg.series.format = Number(s.format);
+    if ('format' in s && [1, 3, 5, 7].includes(Number(s.format))) cfg.series.format = Number(s.format);
     if ('blue' in s) cfg.series.blue = int(s.blue, 0, 9, cfg.series.blue);
     if ('red' in s) cfg.series.red = int(s.red, 0, 9, cfg.series.red);
     if ('autoCount' in s) cfg.series.autoCount = !!s.autoCount;
@@ -130,7 +140,7 @@ function applyConfigPatch(cfg, p) {
   if (isObj(p.display)) {
     const d = p.display;
     if ('mode' in d && ['player', 'spectator'].includes(d.mode)) cfg.display.mode = d.mode;
-    for (const k of ['scoreboard', 'feed', 'banners', 'sponsors']) if (k in d) cfg.display[k] = !!d[k];
+    for (const k of ['scoreboard', 'feed', 'banners', 'sponsors', 'draft']) if (k in d) cfg.display[k] = !!d[k];
     if ('players' in d) cfg.display.players = d.players === null ? null : !!d.players;
     if ('scale' in d) {
       const n = Number(d.scale);
@@ -202,7 +212,16 @@ const S = {
   game: null, // dernière partie lue (gardée quand l'API disparaît)
   lastGame: null, // instantané de la dernière partie terminée
   endScreenVisible: false,
+  // Sélection des champions (picks et bans)
+  draft: null, // sélection en cours, déjà mise en forme
+  lastDraft: null, // dernière sélection vue (affichable à la demande)
+  lastRawDraft: null, // dernière réponse brute du client, pour le diagnostic
+  draftMode: 'auto', // auto | show | hide
+  lcuConnected: false,
 };
+
+// Champions : { id → { key, name } }, rempli par Data Dragon puis, à défaut, par le client.
+let champs = new Map();
 
 const slotOf = (g, side) => ((side === 'ORDER') !== g.flipped ? 'blue' : 'red');
 const sideOfSlot = (g, slot) => ((slot === 'blue') !== g.flipped ? 'ORDER' : 'CHAOS');
@@ -269,12 +288,25 @@ function previewOf(game) {
   };
 }
 
+/* Picks et bans : « auto » les montre pendant la sélection (si l'option d'affichage est cochée), « show » force l'affichage (la dernière sélection au besoin), « hide » les cache. */
+function draftState() {
+  const shown = S.draftMode === 'show' ? S.draft || S.lastDraft : S.draftMode === 'auto' && config.display.draft ? S.draft : null;
+  return {
+    mode: S.draftMode,
+    live: !!S.draft,
+    lcu: { enabled: LCU_ENABLED || DEMO_DRAFT, connected: DEMO_DRAFT || S.lcuConnected },
+    visible: !!shown,
+    data: shown,
+  };
+}
+
 function publicState() {
   const live = S.status === 'ingame' || S.status === 'ended';
   const last = S.lastGame;
   let endGame = null;
   if (S.endScreenVisible) endGame = last || (S.game ? previewOf(S.game) : null);
   return {
+    draft: draftState(),
     status: S.status,
     demo: DEMO,
     clockRate: DEMO ? DEMO_SPEED : 1,
@@ -352,11 +384,86 @@ async function loadDdragonVersion(first) {
   }
   if (S.ddragon) {
     log(`Data Dragon : version ${S.ddragon} (icônes des champions et des objets).`);
+    loadChampions();
   } else {
     if (first) log('Data Dragon injoignable : l\'overlay affichera des initiales à la place des icônes. Nouvel essai dans 1 minute.');
     setTimeout(() => loadDdragonVersion(false), 60000).unref();
   }
   broadcast();
+}
+
+/* Noms (en français) et icônes des champions, pour les picks et bans. */
+async function loadChampions() {
+  try {
+    const idx = indexFromDdragon(await fetchJson(`https://ddragon.leagueoflegends.com/cdn/${S.ddragon}/data/fr_FR/champion.json`, 8000));
+    if (!idx.size) throw new Error('liste vide');
+    champs = DEMO ? new Map([...idx, ...DEMO_CHAMPS]) : idx; // en démo, la table de démonstration reste la référence
+    log(`Champions : ${idx.size} chargés depuis Data Dragon.`);
+  } catch (_) {
+    setTimeout(loadChampions, 60000).unref();
+  }
+}
+
+/* ----------------------------------------------- sélection des champions (picks et bans) */
+
+const lcu = LCU_ENABLED ? new LcuClient() : null;
+let demoDraft = null;
+let championSummaryTry = 0;
+
+function setLcuConnected(on) {
+  if (S.lcuConnected === on) return;
+  S.lcuConnected = on;
+  log(on ? 'Client LoL détecté : lecture des picks et bans activée.' : 'Client LoL introuvable ou fermé : picks et bans en pause.');
+}
+
+/* Réponse brute du client (ou de la démo) pour la sélection en cours, null s'il n'y en a pas. */
+async function readDraftRaw() {
+  if (DEMO_DRAFT) return demoDraft.snapshot();
+  if (!lcu) return null;
+  if (!(await lcu.connect())) {
+    setLcuConnected(false);
+    return null;
+  }
+  try {
+    // Hors ligne, Data Dragon manque : la liste des champions du client sert de secours.
+    if (!champs.size && Date.now() - championSummaryTry > 30000) {
+      championSummaryTry = Date.now();
+      const sum = await lcu.get('/lol-game-data/assets/v1/champion-summary.json', 5000).catch(() => null);
+      if (sum && sum.status === 200) champs = indexFromClientSummary(sum.data);
+    }
+    const r = await lcu.get('/lol-champ-select/v1/session');
+    if (r.status === 401) throw new Error('identifiants refusés');
+    setLcuConnected(true);
+    return r.status === 200 ? r.data : null; // 404 : pas de sélection en cours
+  } catch (_) {
+    lcu.reset();
+    setLcuConnected(false);
+    return null;
+  }
+}
+
+function handleDraft(raw) {
+  const d = raw ? normalizeDraft(raw, champs) : null;
+  if (d && !S.draft) {
+    S.endScreenVisible = false; // une nouvelle sélection commence : l'écran de fin de la partie précédente s'efface
+    log(`Sélection des champions détectée${d.spectating ? ' (en spectateur)' : ''}.`);
+  }
+  if (!d && S.draft) log('Sélection des champions terminée.');
+  S.draft = d;
+  if (d) {
+    S.lastDraft = d;
+    S.lastRawDraft = raw;
+  }
+}
+
+async function tickDraft() {
+  try {
+    handleDraft(await readDraftRaw());
+    broadcast();
+  } catch (e) {
+    log(`Erreur de lecture de la sélection des champions : ${e.stack || e.message}`);
+  }
+  setTimeout(tickDraft, 1000);
 }
 
 function setStatus(status) {
@@ -407,6 +514,42 @@ function onGame(raw) {
 }
 
 let demo = null;
+
+/*
+ * Partie simulée. Avec --full, elle ne démarre qu'une fois la sélection des champions terminée, et
+ * quand la partie s'éteint (fin de partie, écran de fin), on enchaîne sur une nouvelle sélection.
+ */
+let demoPhase = 'draft';
+let demoGameUp = false;
+let demoOfflineSince = 0;
+function demoGameRaw() {
+  if (!DEMO_FULL) return demo ? demo.snapshot() : null; // --draft : pas de partie ; démo seule : la partie
+  if (demoPhase === 'draft') {
+    if (!demoDraft.finished) return null;
+    demoPhase = 'game';
+    demo = new DemoGame({ speed: DEMO_SPEED, start: DEMO_START, spectator: DEMO_SPECTATOR });
+    demoGameUp = false;
+    demoOfflineSince = 0;
+  }
+  const raw = demo.snapshot();
+  if (raw) {
+    demoGameUp = true;
+    demoOfflineSince = 0;
+    return raw;
+  }
+  if (demoGameUp) {
+    demoGameUp = false;
+    demoOfflineSince = Date.now();
+  }
+  if (demoOfflineSince && Date.now() - demoOfflineSince > 12000) {
+    demoPhase = 'draft';
+    demo = null;
+    demoDraft.reset();
+    demoOfflineSince = 0;
+  }
+  return null;
+}
+
 function handle(res) {
   if (res.error) return onApiDown();
   if (!S.apiUp) {
@@ -423,7 +566,7 @@ function handle(res) {
 async function tick() {
   try {
     if (DEMO) {
-      const raw = demo.snapshot();
+      const raw = demoGameRaw();
       handle(raw ? { status: 200, data: raw } : { error: 'demo' });
     } else {
       handle(await fetchLive());
@@ -638,6 +781,11 @@ async function handleApi(req, res, pathname) {
   const method = req.method;
 
   if (method === 'GET' && pathname === '/api/state') return sendJson(res, 200, publicState()), true;
+  // Dernière réponse brute du client pour la sélection des champions : sert à diagnostiquer (aucun identifiant dedans).
+  if (method === 'GET' && pathname === '/api/draft/raw') {
+    if (!S.lastRawDraft) return fail(res, 404, 'Aucune sélection des champions vue pour l\'instant.'), true;
+    return sendJson(res, 200, S.lastRawDraft), true;
+  }
   if (method !== 'POST' && method !== 'DELETE') return false;
 
   const denied = writeGuard(req);
@@ -687,6 +835,7 @@ async function handleApi(req, res, pathname) {
         config = clone(DEFAULT_CONFIG);
         config.presets = presets;
         S.endScreenVisible = false;
+        S.draftMode = 'auto';
         if (S.lastGame) S.lastGame.counted = null;
         saveConfig();
         log('Tous les réglages ont été réinitialisés (les presets sont conservés).');
@@ -704,6 +853,12 @@ async function handleApi(req, res, pathname) {
         }
         saveConfig();
         log('Côtés échangés : les équipes et leurs scores ont changé de couleur.');
+        return done();
+      }
+
+      case '/api/draft': {
+        if (!['auto', 'show', 'hide'].includes(body.mode)) return fail(res, 400, 'Mode invalide (auto, show ou hide).'), true;
+        S.draftMode = body.mode;
         return done();
       }
 
@@ -829,9 +984,9 @@ function start() {
       log('Première utilisation : data/config.json créé.');
     }
 
-    if (DEMO) {
-      demo = new DemoGame({ speed: DEMO_SPEED, start: DEMO_START, spectator: DEMO_SPECTATOR });
-    }
+    if (DEMO) champs = new Map(DEMO_CHAMPS); // la démo connaît ses champions, même sans Internet
+    if (DEMO_DRAFT) demoDraft = new DemoDraft({ speed: DEMO_SPEED, spectator: DEMO_SPECTATOR, loop: !DEMO_FULL });
+    else if (DEMO) demo = new DemoGame({ speed: DEMO_SPEED, start: DEMO_START, spectator: DEMO_SPECTATOR });
 
     server.once('error', reject);
     server.listen(PORT, HOST, () => {
@@ -845,13 +1000,20 @@ function start() {
       if (HOST === '0.0.0.0') {
         for (const ip of lanAddresses()) console.log(`  Sur le réseau       : http://${ip}:${PORT}/overlay`);
       }
-      if (DEMO) {
+      if (DEMO_FULL) {
+        console.log(`  MODE DÉMO COMPLET : sélection des champions, partie, écran de fin, puis on recommence (vitesse ×${DEMO_SPEED}${DEMO_SPECTATOR ? ', spectateur' : ''})`);
+      } else if (DEMO_DRAFT) {
+        console.log(`  MODE DÉMO : sélection des champions en boucle, vitesse ×${DEMO_SPEED}${DEMO_SPECTATOR ? ', spectateur' : ''}`);
+      } else if (DEMO) {
         console.log(`  MODE DÉMO : vitesse ×${DEMO_SPEED}, départ à ${clock(DEMO_START)}${DEMO_SPECTATOR ? ', spectateur' : ''}`);
+      } else if (LCU_ENABLED) {
+        console.log('  Picks et bans     : lus dans le client LoL pendant la sélection des champions');
       }
       if (IS_SEA) console.log('  Fermez cette fenêtre pour arrêter le programme.');
       console.log('');
       loadDdragonVersion(true);
       tick();
+      if (DEMO_DRAFT || LCU_ENABLED) tickDraft();
       resolve({ host: HOST, port: PORT, demo: DEMO });
     });
   });

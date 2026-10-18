@@ -199,6 +199,23 @@
     $('end-info').textContent = info;
   }
 
+  /* Picks et bans : mode d'affichage et état de la lecture du client LoL. */
+  function renderDraft() {
+    const d = state.draft;
+    if (!d) return;
+    for (const r of qsa('input[name=draft-mode]')) r.checked = r.value === d.mode;
+    let info;
+    if (!d.lcu.enabled) info = 'La lecture du client LoL est désactivée (mode démo ou option --no-lcu).';
+    else if (!d.lcu.connected) info = 'Client LoL non détecté : lancez le client League of Legends (pas seulement le Riot Client).';
+    else if (!d.live) info = 'Client LoL détecté. En attente d\'une sélection des champions.';
+    else {
+      const t = d.data && d.data.label ? d.data.label : 'en cours';
+      info = `Sélection des champions en cours : ${t.charAt(0).toLowerCase() + t.slice(1)}.`;
+    }
+    if (d.mode === 'show' && !d.live) info += d.visible ? ' La dernière sélection vue est affichée.' : ' Rien à afficher : aucune sélection vue pour l\'instant.';
+    $('draft-info').textContent = info;
+  }
+
   /* Sponsors : la liste est reconstruite seulement si elle diffère de ce qui est affiché. */
   function readSponsors() {
     return qsa('.sponsor-row').map((row) => ({ text: row.querySelector('input').value, image: row.dataset.image || '' }));
@@ -320,6 +337,7 @@
     renderTeams();
     renderSettings();
     renderEnd();
+    renderDraft();
     renderSponsors();
     renderPresets();
   }
@@ -386,6 +404,8 @@
     debounce('scale', () => patch({ display: { scale: Number(e.target.value) / 100 } }), 200);
   });
 
+  for (const r of qsa('input[name=draft-mode]')) r.addEventListener('change', () => api('POST', '/api/draft', { mode: r.value }).catch(() => {}));
+
   $('end-show').addEventListener('click', () => api('POST', '/api/endscreen', { visible: true }).catch(() => {}));
   $('end-hide').addEventListener('click', () => api('POST', '/api/endscreen', { visible: false }).catch(() => {}));
   $('win-blue').addEventListener('click', () => api('POST', '/api/endscreen', { visible: true, winner: 'blue' }).catch(() => {}));
@@ -425,6 +445,7 @@
     toast('Adresse de l\'overlay copiée : collez-la dans OBS.', 'ok');
   });
   $('url-overlay').value = origin + '/overlay';
+  $('url-draft').value = origin + '/overlay?view=draft';
   $('url-control').value = origin + '/control';
   for (const b of qsa('[data-copy]')) {
     b.addEventListener('click', async () => {

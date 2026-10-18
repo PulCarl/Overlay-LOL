@@ -13,12 +13,13 @@ La source de données est l'API officielle et locale du jeu, la *Live Client Dat
 
 ## Ce qui s'affiche
 
-- **Barre de score** en haut au centre. Plaque centrale : kills de chaque équipe, chrono et jauge de valeur des objets. De chaque côté : logo, tag, nom et pastilles de série (BO3 / BO5), puis un bandeau avec les tours, inhibiteurs, dragons (losanges colorés selon l'élément, mention « Âme » à 4), hérauts, barons et valeur des objets.
+- **Barre de score** en haut au centre. Plaque centrale : kills de chaque équipe, chrono et jauge de valeur des objets. De chaque côté : logo, tag, nom et pastilles de série (BO3, BO5 ou BO7 : une pastille par victoire nécessaire), puis un bandeau avec les tours, inhibiteurs, dragons (losanges colorés selon l'élément, mention « Âme » à 4), hérauts, barons et valeur des objets.
 - **Fil d'actions** à gauche : kills (tueur → victime, assistances) et tours détruites.
 - **Bandeaux d'objectifs** sous la barre : dragons (volés ou non), Nashor, Héraut, Atakhan, inhibiteurs, premier sang, triple, quadra et pentakill, ace.
 - **Tableau des joueurs** en bas au centre : deux colonnes de 5 lignes alignées par poste, avec champion, niveau, nom, K/D/A, objets et CS, et le temps de réapparition des joueurs morts. Affiché par défaut en mode spectateur.
 - **Sponsors** en rotation en haut à gauche.
 - **Écran de fin** plein écran : équipe gagnante, score de la série, MVP, tableau des 10 joueurs et comparatif des objectifs.
+- **Picks et bans** plein écran pendant la sélection des champions : bans barrés, cinq grandes colonnes par équipe avec l'illustration du champion et le nom du joueur, chrono, étape en cours, équipe qui joue et score de la série (voir « Picks et bans »).
 
 ### Design
 
@@ -37,7 +38,7 @@ Une fois fabriquée, ouvrez le dossier **`dist/Overlay-LoL/`** et double-cliquez
 - Le dossier est autonome (Electron et toutes les pages sont dedans, environ 300 Mo). Copiez-le où vous voulez : Bureau, autre disque, clé USB.
 - Vos réglages et vos logos sont gardés dans un dossier `data/` **à côté du .exe**, avec un journal (`data/overlay.log`). Si le dossier de l'application n'est pas modifiable, par exemple dans `Program Files`, ils vont dans `%APPDATA%\Overlay LoL\data`.
 - Une seule fenêtre à la fois : relancer le .exe ramène la fenêtre déjà ouverte au premier plan.
-- Options (lancez-le depuis un terminal) : `Overlay-LoL.exe --demo` pour la partie simulée (voir « Mode démo »). `PORT` et `HOST` se règlent comme pour `node server.js`.
+- Options (lancez-le depuis un terminal) : `Overlay-LoL.exe --demo --full` pour la démo complète (voir « Mode démo »). `PORT` et `HOST` se règlent comme pour `node server.js`.
 - Le programme n'est pas signé numériquement : Windows peut afficher « Windows a protégé votre ordinateur ». Cliquez sur **Informations complémentaires**, puis **Exécuter quand même**.
 
 ### Le serveur seul, en .exe
@@ -54,7 +55,7 @@ Il n'y a rien d'autre à installer : le serveur n'utilise aucune dépendance (pa
 
 ### Tester sans lancer le jeu
 
-Double-cliquez sur **`start-demo.bat`**, ou lancez `Overlay-LoL.exe --demo` : une partie simulée tourne en boucle (voir « Mode démo »).
+Double-cliquez sur **`start-demo.bat`** : la démo complète enchaîne la sélection des champions (picks et bans), une partie, l'écran de fin, puis recommence (voir « Mode démo »). Avec l'application : `Overlay-LoL.exe --demo --full`.
 
 ### Fabriquer les programmes soi-même
 
@@ -87,9 +88,9 @@ Gardez la source par-dessus la capture de League of Legends. Si vous diffusez en
 
 Le panneau de contrôle affiche ces adresses avec un bouton « Copier ».
 
-### Picks et bans
+### Une source pour les picks et bans
 
-Les picks et les bans passent par [drafter.lol](https://drafter.lol/), pas par cet overlay. Ajoutez le lien d'overlay fourni par drafter.lol comme **source navigateur séparée**, par exemple sur votre scène de sélection des champions. La Live Client Data API n'existe pas avant le début de la partie : les deux overlays ne se gênent donc pas.
+La même adresse `/overlay` affiche les picks et bans toute seule pendant la sélection des champions, puis laisse place à l'overlay de la partie. Pour une scène OBS dédiée à la sélection, ajoutez une seconde source navigateur 1920×1080 sur **`http://localhost:3000/overlay?view=draft`** : elle n'affiche que les picks et bans, rien d'autre. Le panneau de contrôle (onglet OBS) donne les deux adresses.
 
 ## Utilisation
 
@@ -133,9 +134,25 @@ Avec `HOST=0.0.0.0`, le panneau de contrôle est accessible à tout le réseau l
 
 Chaque changement est enregistré tout de suite, il n'y a pas de bouton « Enregistrer ». Les réglages sont conservés dans `data/config.json`, les logos envoyés dans `data/uploads/`.
 
+## Picks et bans
+
+Pendant la sélection des champions, l'overlay prend tout l'écran : fond aux couleurs de la charte, bandeau du haut (équipes, bans, score de la série, étape et chrono, équipe qui joue) et dix grandes colonnes avec l'illustration de chaque champion verrouillé. Un champion survolé apparaît en grisé, la colonne de celui qui choisit pulse, et un ban se barre dès qu'il est fait. Les noms de champions sont en français.
+
+**D'où viennent les données.** Le client League of Legends ouvre une petite API locale pendant que vous êtes en sélection des champions. Le programme la lit toutes les secondes, comme Porofessor ou Blitz : il retrouve le port et le mot de passe dans le fichier `lockfile` du client (ou dans son processus, si LoL n'est pas installé dans `C:\Riot Games\League of Legends`). Il ne lit pas la mémoire du jeu et n'envoie rien hors de votre PC.
+
+**Réglages** (panneau, carte « Picks et bans » de l'onglet Principal) :
+- **Auto** : affichés pendant la sélection, effacés ensuite (si l'option « Picks et bans » de l'onglet Affichage est cochée).
+- **Afficher** : affichage forcé, avec la dernière sélection vue quand il n'y en a pas en cours. Pratique pour garder le draft à l'écran pendant le chargement de la partie.
+- **Masquer** : jamais affichés.
+
+**Ce que le client montre, l'overlay le montre, pas plus.** Il faut que *votre* client soit en sélection des champions (partie classée, normale ou personnalisée). Le client signale aussi quand on regarde un salon personnalisé en spectateur : l'overlay le gère, mais ce cas n'a pas été testé avec un vrai client. Les picks de l'équipe adverse n'apparaissent que quand le client les affiche, et les pseudos masqués par le client restent masqués. Il n'est pas possible de lire la sélection d'une partie jouée par d'autres sans y être.
+
+**À savoir.** Cette API du client n'est pas documentée officiellement par Riot : une mise à jour du jeu peut la changer. Si les picks et bans n'apparaissent pas alors que le panneau indique « Client LoL détecté », ouvrez `http://localhost:3000/api/draft/raw` pendant une sélection : c'est la réponse brute du client, utile pour comprendre ce qui a changé. Option `--no-lcu` (ou variable `NO_LCU=1`) pour désactiver complètement cette lecture. [drafter.lol](https://drafter.lol/) reste utilisable à côté pour un draft de tournoi arbitré à part.
+
 ## Mode démo
 
 ```bat
+node server.js --demo --full
 node server.js --demo
 node server.js --demo --speed=12 --start=900 --spectator
 ```
@@ -143,8 +160,10 @@ node server.js --demo --speed=12 --start=900 --spectator
 - `--speed=12` : vitesse de la partie simulée (12 fois le temps réel).
 - `--start=900` : démarre à 900 secondes de jeu (15:00).
 - `--spectator` : simule une partie vue en spectateur (pas de vainqueur automatique).
+- `--draft` : simule uniquement la sélection des champions (picks et bans), en boucle et sans partie. Pratique pour régler le design : `node server.js --demo --draft --speed=4`.
+- `--full` : **démo complète**. Elle enchaîne la sélection des champions (bans, picks, finalisation), la partie avec les champions choisis, l'écran de fin, puis une nouvelle sélection. À vitesse ×12, un tour complet dure environ quatre minutes ; `--speed=60` le ramène à une minute et demie.
 
-La partie simulée se termine, reste en ligne quelques secondes, puis une nouvelle partie démarre.
+Sans `--full`, la partie simulée se termine, reste en ligne quelques secondes, puis une nouvelle partie démarre.
 
 ## Limites
 
@@ -183,6 +202,10 @@ Dans le panneau, cliquez sur « Tout réinitialiser ». Pour tout effacer, y com
 server.js              serveur (HTTP, Server-Sent Events, API du panneau)
 lib/game.js            transforme la réponse de l'API en état d'overlay
 lib/demo.js            simulateur de partie pour le mode démo
+lib/lcu.js             lecture du client LoL (port et mot de passe locaux)
+lib/draft.js           met en forme la sélection des champions (picks et bans)
+lib/demo-draft.js      simulateur de sélection des champions (--draft)
+test/                  tests automatiques (npm test, aucune dépendance)
 public/overlay/        l'overlay pour OBS
 public/control/        le panneau de contrôle
 public/shared/         polices de la charte (Bruno Ace SC et Chakra Petch, licence OFL)
@@ -197,6 +220,12 @@ data/                  configuration et logos (créé au premier lancement ; à 
 
 Pour les développeurs : `GET /api/state` renvoie l'état complet, `GET /events` le diffuse en Server-Sent Events. Les routes qui modifient quelque chose n'acceptent que du JSON envoyé par une page servie par le serveur lui-même.
 
+## Crédits
+
+- **Icônes des objectifs** (tour, inhibiteur, dragon, héraut, Nashor, or, épées croisées) : [game-icons.net](https://game-icons.net), licence [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). Icons made by **Lorc** (`white-tower`, `crystal-growth`, `dragon-head`, `beast-eye`, `horned-skull`, `crossed-swords`) and **Delapouite** (`two-coins`). Les tracés sont repris tels quels et seulement recolorés par la feuille de style.
+- **Polices** : Bruno Ace SC et Chakra Petch (SIL Open Font License 1.1).
+- **Icônes de champions et d'objets**, et illustrations des champions : Data Dragon, le service public de Riot Games pour les développeurs.
+
 ## Licence
 
-Le code est publié sous licence [MIT](LICENSE). Les polices Bruno Ace SC et Chakra Petch sont sous licence SIL Open Font License 1.1 (voir `public/shared/fonts/LICENSE-*.txt`). Les noms, logos et marques cités (League of Legends, Riot Games, Genesis, OBS…) appartiennent à leurs propriétaires respectifs.
+Le code est publié sous licence [MIT](LICENSE). Les polices Bruno Ace SC et Chakra Petch sont sous licence SIL Open Font License 1.1 (voir `public/shared/fonts/LICENSE-*.txt`), et les icônes de game-icons.net sous licence CC BY 3.0 (voir « Crédits »). Les noms, logos et marques cités (League of Legends, Riot Games, Genesis, OBS…) appartiennent à leurs propriétaires respectifs.

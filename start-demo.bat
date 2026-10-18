@@ -11,8 +11,9 @@ if "%PORT%"=="" set PORT=3000
 rem Ouvre le panneau de contrôle quelques secondes après le démarrage du serveur.
 start "" cmd /c "timeout /t 2 /nobreak >nul & start "" http://localhost:%PORT%/control"
 
+rem Démo complète : sélection des champions, partie, écran de fin, puis on recommence.
 rem Options possibles : --speed=12  --start=900  --spectator
-node server.js --demo %*
+node server.js --demo --full %*
 echo.
 echo  Le serveur s'est arrêté.
 pause

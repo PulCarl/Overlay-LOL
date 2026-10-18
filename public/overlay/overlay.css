@@ -804,7 +804,7 @@ body.preview {
 .scol {
   position: absolute;
   top: 132px;
-  width: 218px;
+  width: 256px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -876,6 +876,45 @@ body.preview {
 }
 .srow .kda {
   font-size: 18px;
+}
+/* Sorts d'invocateur (deux icônes) et runes (rune principale, arbre secondaire) du côté de l'intérieur de l'écran. */
+.s-mini {
+  flex: none;
+  display: flex;
+  gap: 4px;
+}
+.srow.red .s-mini {
+  flex-direction: row-reverse;
+}
+.s-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+.srow .ico.spell,
+.srow .ico.rune {
+  width: 26px;
+  height: 26px;
+}
+.srow .ico.spell {
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(246, 244, 251, 0.25);
+}
+.srow .ico.rune {
+  border-radius: 50%;
+  background: rgba(0, 1, 3, 0.75);
+  box-shadow: 0 0 0 1px rgba(158, 66, 237, 0.65);
+}
+.srow .ico.rune img {
+  object-fit: contain;
+}
+.srow .ico.rune.tree img {
+  padding: 3px;
+}
+.srow .ico.spell .ini,
+.srow .ico.rune .ini {
+  font-size: 9px;
 }
 .srow.dead {
   opacity: 0.6;

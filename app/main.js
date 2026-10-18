@@ -1,22 +1,28 @@
 'use strict';
 
 /*
- * Application de bureau : démarre le serveur de l'overlay dans ce processus et affiche
- * le panneau de contrôle dans sa propre fenêtre, au lieu d'un onglet de navigateur.
+ * Application de bureau : au lancement, on choisit le jeu (voir games.js). Le serveur du jeu
+ * choisi démarre dans ce processus et son panneau de contrôle s'affiche dans la même fenêtre,
+ * au lieu d'un onglet de navigateur.
  */
 
-const { app, BrowserWindow, Menu, dialog, nativeTheme, screen, shell } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, screen, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const { pathToFileURL } = require('url');
+const games = require('./games.js');
 
-const TITLE = 'Overlay LoL · Panneau de contrôle';
+const LAUNCHER_FILE = path.join(__dirname, 'launcher', 'index.html');
+const LAUNCHER_URL = pathToFileURL(LAUNCHER_FILE).href;
+const LAUNCHER_TITLE = 'Overlay · Choisir un jeu';
+const LAUNCHER_SIZE = { width: 940, height: 640 };
 const DEFAULT_SIZE = { width: 780, height: 1154 };
 const MIN_SIZE = { width: 560, height: 600 };
 
 let win = null;
 let quitting = false;
 let dataDir = '';
-let origin = '';
+let origin = ''; // adresse du panneau de contrôle affiché ; vide sur l'écran de choix
 
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 
@@ -87,8 +93,9 @@ function loadBounds() {
   }
 }
 
+/* On ne retient que la fenêtre du panneau de contrôle, jamais celle de l'écran de choix. */
 function saveBounds() {
-  if (!win || win.isDestroyed()) return;
+  if (!win || win.isDestroyed() || !origin) return;
   try {
     fs.writeFileSync(boundsFile(), JSON.stringify({ ...win.getNormalBounds(), maximized: win.isMaximized() }));
   } catch (_) {
@@ -98,44 +105,90 @@ function saveBounds() {
 
 /* ------------------------------------------------------------ fenêtre */
 
-function createWindow(port) {
-  origin = `http://127.0.0.1:${port}`;
+/* L'écran de choix a une taille fixe ; le panneau de contrôle retrouve la taille et la place de la dernière fois. */
+function sizeForLauncher() {
+  if (win.isMaximized()) win.unmaximize();
+  // Windows ignore la nouvelle taille d'une fenêtre déjà verrouillée : on change la taille d'abord, on verrouille ensuite.
+  win.setResizable(true);
+  win.setMinimumSize(LAUNCHER_SIZE.width, LAUNCHER_SIZE.height);
+  win.setSize(LAUNCHER_SIZE.width, LAUNCHER_SIZE.height);
+  win.setResizable(false);
+  win.setMaximizable(false);
+  win.center();
+}
+
+function sizeForGame() {
   const area = screen.getPrimaryDisplay().workArea;
   const saved = loadBounds();
+  const width = clamp(saved.width || DEFAULT_SIZE.width, MIN_SIZE.width, area.width);
+  const height = clamp(saved.height || Math.min(DEFAULT_SIZE.height, area.height), MIN_SIZE.height, area.height);
+  win.setResizable(true);
+  win.setMaximizable(true);
+  win.setMinimumSize(MIN_SIZE.width, MIN_SIZE.height);
+  win.setSize(width, height);
+  if (saved.x !== undefined) win.setPosition(saved.x, saved.y);
+  else win.center();
+  if (saved.maximized) win.maximize();
+}
 
+function showLauncher() {
+  if (!win) return;
+  saveBounds();
+  origin = '';
+  sizeForLauncher();
+  win.setTitle(LAUNCHER_TITLE);
+  win.loadFile(LAUNCHER_FILE);
+}
+
+function showGame(info) {
+  if (!win) return;
+  origin = new URL(info.url).origin;
+  sizeForGame();
+  win.setTitle(info.title);
+  win.loadURL(info.url);
+}
+
+function createWindow() {
   win = new BrowserWindow({
-    x: saved.x,
-    y: saved.y,
-    width: clamp(saved.width || DEFAULT_SIZE.width, MIN_SIZE.width, area.width),
-    height: clamp(saved.height || Math.min(DEFAULT_SIZE.height, area.height), MIN_SIZE.height, area.height),
-    minWidth: MIN_SIZE.width,
-    minHeight: MIN_SIZE.height,
+    width: LAUNCHER_SIZE.width,
+    height: LAUNCHER_SIZE.height,
     show: false,
-    title: TITLE,
+    title: LAUNCHER_TITLE,
     icon: path.join(__dirname, 'icon.png'),
     backgroundColor: '#07080f',
     autoHideMenuBar: true,
-    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false },
+    resizable: false,
+    maximizable: false,
+    webPreferences: {
+      contextIsolation: true,
+      sandbox: true,
+      nodeIntegration: false,
+      spellcheck: false,
+      preload: path.join(__dirname, 'preload.js'),
+    },
   });
+  win.setMinimumSize(LAUNCHER_SIZE.width, LAUNCHER_SIZE.height);
+  win.center();
 
-  win.once('ready-to-show', () => {
-    if (saved.maximized) win.maximize();
-    win.show();
-  });
+  win.once('ready-to-show', () => win.show());
   win.on('page-title-updated', (e) => e.preventDefault());
 
-  // Fermer la fenêtre arrête aussi l'overlay dans OBS : on demande confirmation.
+  // Fermer la fenêtre arrête aussi les overlays dans OBS : on demande confirmation s'il y en a un de lancé.
   win.on('close', (e) => {
     if (quitting) return;
+    if (!games.anyRunning()) {
+      quitting = true;
+      return;
+    }
     e.preventDefault();
     const choice = dialog.showMessageBoxSync(win, {
       type: 'question',
       buttons: ['Quitter', 'Annuler'],
       defaultId: 1,
       cancelId: 1,
-      title: 'Overlay LoL',
-      message: 'Quitter Overlay LoL ?',
-      detail: 'L\'overlay disparaîtra d\'OBS tant que le programme est fermé.',
+      title: 'Overlay',
+      message: 'Quitter l\'application ?',
+      detail: 'Les overlays disparaîtront d\'OBS tant que le programme est fermé.',
     });
     if (choice === 0) {
       quitting = true;
@@ -153,10 +206,9 @@ function createWindow(port) {
     return { action: 'deny' };
   });
   win.webContents.on('will-navigate', (e, url) => {
-    if (!url.startsWith(origin + '/')) {
-      e.preventDefault();
-      if (/^https?:\/\//.test(url)) shell.openExternal(url);
-    }
+    if (url === LAUNCHER_URL || (origin && url.startsWith(origin + '/'))) return;
+    e.preventDefault();
+    if (/^https?:\/\//.test(url)) shell.openExternal(url);
   });
   win.webContents.on('before-input-event', (e, input) => {
     if (input.type !== 'keyDown') return;
@@ -169,7 +221,39 @@ function createWindow(port) {
     }
   });
 
-  win.loadURL(origin + '/control');
+  win.loadFile(LAUNCHER_FILE);
+}
+
+/* ------------------------------------------------------------ messages des pages */
+
+/* Chaque demande n'est acceptée que de la page qui a le droit de la faire. */
+const fromLauncher = (e) => !!e.senderFrame && e.senderFrame.url.split(/[?#]/)[0] === LAUNCHER_URL;
+const fromGame = (e) => !!origin && !!e.senderFrame && e.senderFrame.url.startsWith(origin + '/');
+
+function setupIpc() {
+  ipcMain.handle('games:list', (e) => {
+    if (!fromLauncher(e)) return { games: [], last: null };
+    return { games: games.publicList(), last: games.loadLast(dataDir) };
+  });
+
+  ipcMain.handle('games:choose', async (e, id) => {
+    if (!fromLauncher(e)) return { ok: false, error: 'Demande refusée.' };
+    try {
+      const info = await games.launch(String(id));
+      games.saveLast(dataDir, info.game.id);
+      showGame(info);
+      return { ok: true };
+    } catch (err) {
+      console.error(`Démarrage de « ${id} » impossible :`, err);
+      return { ok: false, error: err && err.message ? err.message : String(err) };
+    }
+  });
+
+  ipcMain.handle('games:back', (e) => {
+    if (!fromGame(e)) return { ok: false };
+    showLauncher();
+    return { ok: true };
+  });
 }
 
 /* ------------------------------------------------------------ démarrage */
@@ -191,31 +275,16 @@ if (!app.requestSingleInstanceLock()) {
   });
   app.on('window-all-closed', () => app.quit());
 
-  app.whenReady().then(async () => {
+  app.whenReady().then(() => {
     app.setAppUserModelId('fr.overlay-lol');
     nativeTheme.themeSource = 'dark';
     Menu.setApplicationMenu(null);
 
     dataDir = pickDataDir();
-    process.env.OVERLAY_DATA_DIR = dataDir; // à définir avant de charger le serveur
+    process.env.OVERLAY_DATA_DIR = dataDir; // à définir avant de charger un serveur de jeu
     setupLog();
 
-    let info;
-    try {
-      const server = require('../server.js');
-      try {
-        info = await server.start();
-      } catch (e) {
-        dialog.showErrorBox('Overlay LoL', server.startErrorMessage(e));
-        app.exit(1);
-        return;
-      }
-    } catch (e) {
-      console.error(e);
-      dialog.showErrorBox('Overlay LoL', `Impossible de démarrer : ${e.message}`);
-      app.exit(1);
-      return;
-    }
-    createWindow(info.port);
+    setupIpc();
+    createWindow();
   });
 }

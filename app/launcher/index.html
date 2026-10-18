@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; font-src 'self'; script-src 'self'; img-src 'self' data:">
+  <title>Overlay · Choisir un jeu</title>
+  <link rel="stylesheet" href="../../public/shared/fonts.css">
+  <link rel="stylesheet" href="launcher.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="brand">
+      <svg class="mark" viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+        <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4802de"/><stop offset="1" stop-color="#9e42ed"/></linearGradient></defs>
+        <path d="M16 2 30 16 16 30 2 16Z" fill="none" stroke="url(#g)" stroke-width="2.5"/>
+        <path d="M16 9 23 16 16 23 9 16Z" fill="url(#g)"/>
+      </svg>
+      <span class="word">OVERLAY</span>
+    </header>
+
+    <h1>Choisis ton jeu</h1>
+    <p class="lead">L'overlay et son panneau de contrôle s'ouvrent dans cette fenêtre. Tu pourras revenir ici à tout moment avec « ← Jeux ».</p>
+
+    <p class="error" id="error" role="alert" hidden></p>
+
+    <ul class="games" id="games" aria-label="Jeux disponibles"></ul>
+
+    <footer class="foot">Non affilié à Riot Games · Les overlays se branchent dans OBS comme source navigateur</footer>
+  </main>
+  <script src="launcher.js"></script>
+</body>
+</html>

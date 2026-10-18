@@ -59,7 +59,9 @@ async function main() {
 
   step('Préparation des fichiers');
   for (const item of ['server.js', 'lib', 'public']) fs.cpSync(path.join(ROOT, item), path.join(stage, item), { recursive: true });
-  fs.copyFileSync(path.join(ROOT, 'app', 'main.js'), path.join(stage, 'app', 'main.js'));
+  for (const item of ['main.js', 'games.js', 'preload.js', 'launcher']) {
+    fs.cpSync(path.join(ROOT, 'app', item), path.join(stage, 'app', item), { recursive: true });
+  }
   const icon = makeIcon();
   fs.writeFileSync(path.join(stage, 'app', 'icon.png'), icon.png);
   const icoPath = path.join(WORK, 'icon.ico');

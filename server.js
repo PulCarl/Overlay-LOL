@@ -121,7 +121,7 @@ function applyConfigPatch(cfg, p) {
 
   if (isObj(p.series)) {
     const s = p.series;
-    if ('format' in s && [1, 3, 5].includes(Number(s.format))) cfg.series.format = Number(s.format);
+    if ('format' in s && [1, 3, 5, 7].includes(Number(s.format))) cfg.series.format = Number(s.format);
     if ('blue' in s) cfg.series.blue = int(s.blue, 0, 9, cfg.series.blue);
     if ('red' in s) cfg.series.red = int(s.red, 0, 9, cfg.series.red);
     if ('autoCount' in s) cfg.series.autoCount = !!s.autoCount;

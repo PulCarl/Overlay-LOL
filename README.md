@@ -13,7 +13,7 @@ La source de données est l'API officielle et locale du jeu, la *Live Client Dat
 
 ## Ce qui s'affiche
 
-- **Barre de score** en haut au centre. Plaque centrale : kills de chaque équipe, chrono et jauge de valeur des objets. De chaque côté : logo, tag, nom et pastilles de série (BO3 / BO5), puis un bandeau avec les tours, inhibiteurs, dragons (losanges colorés selon l'élément, mention « Âme » à 4), hérauts, barons et valeur des objets.
+- **Barre de score** en haut au centre. Plaque centrale : kills de chaque équipe, chrono et jauge de valeur des objets. De chaque côté : logo, tag, nom et pastilles de série (BO3, BO5 ou BO7 : une pastille par victoire nécessaire), puis un bandeau avec les tours, inhibiteurs, dragons (losanges colorés selon l'élément, mention « Âme » à 4), hérauts, barons et valeur des objets.
 - **Fil d'actions** à gauche : kills (tueur → victime, assistances) et tours détruites.
 - **Bandeaux d'objectifs** sous la barre : dragons (volés ou non), Nashor, Héraut, Atakhan, inhibiteurs, premier sang, triple, quadra et pentakill, ace.
 - **Tableau des joueurs** en bas au centre : deux colonnes de 5 lignes alignées par poste, avec champion, niveau, nom, K/D/A, objets et CS, et le temps de réapparition des joueurs morts. Affiché par défaut en mode spectateur.

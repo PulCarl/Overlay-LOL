@@ -1,0 +1,6 @@
+# Fins de ligne : les .bat Windows doivent rester en CRLF, sinon cmd peut les mal lire.
+* text=auto
+*.bat text eol=crlf
+*.woff2 binary
+*.png binary
+*.ico binary

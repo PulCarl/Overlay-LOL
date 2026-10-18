@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Overlay LoL · Panneau de contrôle</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/shared/fonts.css">
+  <link rel="stylesheet" href="/control/control.css">
+</head>
+<body>
+  <div class="chrome">
+  <header class="appbar">
+    <div class="stat"><i class="dot" id="conn-dot"></i><b id="conn-text">Connexion…</b></div>
+    <div class="stat" title="État de la partie de League of Legends"><span aria-hidden="true">🎮</span><b id="status-text">…</b><em class="badge" id="demo-badge" hidden>Démo</em></div>
+    <button class="addr" id="addr" type="button" title="Copier l'adresse de l'overlay pour OBS"><span class="muted">Overlay :</span> <b id="addr-text">localhost:3000</b></button>
+    <button class="btn danger small" id="reset-all" type="button" title="Remet équipes, série, affichage et sponsors à zéro (les presets sont gardés)">⚠️ Réinitialiser</button>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button type="button" role="tab" data-tab="main" aria-selected="true">Principal</button>
+    <button type="button" role="tab" data-tab="display" aria-selected="false">Affichage</button>
+    <button type="button" role="tab" data-tab="teams" aria-selected="false">Équipes</button>
+    <button type="button" role="tab" data-tab="obs" aria-selected="false">OBS</button>
+    <span class="saved" id="saved">Enregistré ✓</span>
+  </nav>
+  </div>
+
+  <main class="pages">
+
+    <!-- ============================================================ Principal -->
+    <div class="page" id="tab-main" role="tabpanel">
+
+      <section class="card">
+        <div class="card-head">
+          <h2><span aria-hidden="true">🛡️</span> Équipes</h2>
+          <button class="btn small" id="swap" type="button" title="Échange les équipes bleue et rouge avec leurs scores">⇄ Échanger les côtés</button>
+        </div>
+        <div class="teams">
+          <div class="team blue" data-slot="blue">
+            <div class="team-band">Équipe bleue</div>
+            <div class="team-body">
+              <div class="logo-row">
+                <div class="logo-prev" data-f="logo-prev"></div>
+                <div class="logo-actions">
+                  <label class="btn small file">📁 Choisir<input type="file" data-f="logo-file" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
+                  <button class="btn small ghost" type="button" data-act="logo-clear">Retirer</button>
+                </div>
+              </div>
+              <label class="fld">Équipe enregistrée
+                <select data-f="preset"><option value="">— Manuel —</option></select>
+              </label>
+              <div class="name-row">
+                <label class="fld grow">Nom<input type="text" data-f="name" maxlength="40" placeholder="Nom de l'équipe" autocomplete="off"></label>
+                <label class="fld tag">Tag<input type="text" data-f="tag" maxlength="4" placeholder="BLU" autocomplete="off"></label>
+                <button class="btn icon" type="button" data-save-preset="blue" title="Enregistrer cette équipe dans les presets">💾</button>
+              </div>
+            </div>
+          </div>
+          <div class="team red" data-slot="red">
+            <div class="team-band">Équipe rouge</div>
+            <div class="team-body">
+              <div class="logo-row">
+                <div class="logo-prev" data-f="logo-prev"></div>
+                <div class="logo-actions">
+                  <label class="btn small file">📁 Choisir<input type="file" data-f="logo-file" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
+                  <button class="btn small ghost" type="button" data-act="logo-clear">Retirer</button>
+                </div>
+              </div>
+              <label class="fld">Équipe enregistrée
+                <select data-f="preset"><option value="">— Manuel —</option></select>
+              </label>
+              <div class="name-row">
+                <label class="fld grow">Nom<input type="text" data-f="name" maxlength="40" placeholder="Nom de l'équipe" autocomplete="off"></label>
+                <label class="fld tag">Tag<input type="text" data-f="tag" maxlength="4" placeholder="RED" autocomplete="off"></label>
+                <button class="btn icon" type="button" data-save-preset="red" title="Enregistrer cette équipe dans les presets">💾</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="hint">Chaque changement est enregistré tout de suite. Tag : 3 ou 4 lettres.</p>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2><span aria-hidden="true">🏆</span> Série</h2></div>
+        <div class="series">
+          <div class="score blue" data-slot="blue">
+            <span class="score-name" data-f="label">Bleu</span>
+            <div class="stepper">
+              <button class="btn round" type="button" data-act="dec" aria-label="Retirer une victoire">−</button>
+              <output data-f="value">0</output>
+              <button class="btn round" type="button" data-act="inc" aria-label="Ajouter une victoire">+</button>
+            </div>
+          </div>
+          <div class="bo" id="format" role="radiogroup" aria-label="Format de la série">
+            <span class="bo-title">Meilleur des</span>
+            <div class="bo-opts">
+              <label><input type="radio" name="format" value="1"><i></i><span>1</span></label>
+              <label><input type="radio" name="format" value="3"><i></i><span>3</span></label>
+              <label><input type="radio" name="format" value="5"><i></i><span>5</span></label>
+            </div>
+          </div>
+          <div class="score red" data-slot="red">
+            <span class="score-name" data-f="label">Rouge</span>
+            <div class="stepper">
+              <button class="btn round" type="button" data-act="dec" aria-label="Retirer une victoire">−</button>
+              <output data-f="value">0</output>
+              <button class="btn round" type="button" data-act="inc" aria-label="Ajouter une victoire">+</button>
+            </div>
+          </div>
+        </div>
+        <div class="row center">
+          <label class="switch"><input type="checkbox" id="autocount"><i></i><span>Compter les victoires automatiquement</span></label>
+          <button class="btn small ghost" id="series-reset" type="button">Remettre à 0</button>
+        </div>
+        <p class="hint">Quand la case est décochée, la série n'est jamais modifiée toute seule : utilisez + et −.</p>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2><span aria-hidden="true">🎬</span> Écran de fin</h2></div>
+        <div class="split">
+          <button class="btn primary" id="end-show" type="button">📊 Afficher l'écran de fin</button>
+          <button class="btn" id="end-hide" type="button">🎮 Revenir au jeu</button>
+        </div>
+        <div class="split">
+          <button class="btn blue" id="win-blue" type="button">Victoire bleue</button>
+          <button class="btn red" id="win-red" type="button">Victoire rouge</button>
+        </div>
+        <p class="hint" id="end-info"></p>
+        <p class="hint">En mode joueur, l'écran de fin s'affiche tout seul à la fin de la partie. En spectateur, le jeu ne donne pas le vainqueur : cliquez sur « Victoire bleue » ou « Victoire rouge ».</p>
+      </section>
+    </div>
+
+    <!-- ============================================================ Affichage -->
+    <div class="page" id="tab-display" role="tabpanel" hidden>
+      <section class="card">
+        <div class="card-head">
+          <h2><span aria-hidden="true">🖥️</span> Mode</h2>
+          <div class="seg" id="mode" role="radiogroup" aria-label="Mode">
+            <label><input type="radio" name="mode" value="player"><span>Joueur</span></label>
+            <label><input type="radio" name="mode" value="spectator"><span>Spectateur</span></label>
+          </div>
+        </div>
+        <p class="hint first" id="mode-hint"></p>
+        <p class="hint">Joueur : le bas de l'écran reste libre pour la barre des sorts. Spectateur : le panneau des joueurs s'affiche en bas.</p>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2><span aria-hidden="true">👁️</span> Éléments affichés</h2></div>
+        <div class="toggles">
+          <label class="switch"><input type="checkbox" data-disp="scoreboard"><i></i><span>Barre de score</span></label>
+          <label class="switch"><input type="checkbox" data-disp="feed"><i></i><span>Fil d'actions</span></label>
+          <label class="switch"><input type="checkbox" data-disp="banners"><i></i><span>Bandeaux d'objectifs</span></label>
+          <label class="switch"><input type="checkbox" data-disp="players"><i></i><span>Panneau des joueurs <small id="players-auto"></small></span></label>
+          <label class="switch"><input type="checkbox" data-disp="sponsors"><i></i><span>Sponsors</span></label>
+        </div>
+        <div class="row">
+          <label class="slider">Échelle <output id="scale-out">100 %</output>
+            <input type="range" id="scale" min="50" max="150" step="5" value="100">
+          </label>
+          <button class="btn small ghost" id="players-reset" type="button" hidden>Panneau des joueurs : remettre en automatique</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2><span aria-hidden="true">📣</span> Sponsors</h2>
+          <label class="inline">Rotation toutes les <input type="number" id="sponsor-interval" min="3" max="120" step="1"> s</label>
+        </div>
+        <div id="sponsor-list" class="sponsor-list"></div>
+        <button class="btn small" id="sponsor-add" type="button">+ Ajouter un sponsor</button>
+      </section>
+    </div>
+
+    <!-- ============================================================ Équipes (presets) -->
+    <div class="page" id="tab-teams" role="tabpanel" hidden>
+      <section class="card">
+        <div class="card-head"><h2><span aria-hidden="true">💾</span> Presets d'équipes</h2></div>
+        <p class="hint first">Enregistrez une équipe (nom, tag, logo) pour la recharger en un clic côté bleu ou côté rouge, depuis l'onglet Principal ou ici.</p>
+        <div class="split">
+          <button class="btn blue" type="button" data-save-preset="blue">Enregistrer l'équipe bleue</button>
+          <button class="btn red" type="button" data-save-preset="red">Enregistrer l'équipe rouge</button>
+        </div>
+        <div id="preset-list" class="preset-list"></div>
+      </section>
+    </div>
+
+    <!-- ============================================================ OBS -->
+    <div class="page" id="tab-obs" role="tabpanel" hidden>
+      <section class="card">
+        <div class="card-head"><h2><span aria-hidden="true">🔗</span> Adresses pour OBS</h2></div>
+        <p class="hint first">Dans OBS : <b>Sources → + → Navigateur</b>, taille <b>1920 × 1080</b>, avec cette adresse :</p>
+        <div class="copy">
+          <input type="text" id="url-overlay" readonly>
+          <button class="btn primary" type="button" data-copy="url-overlay">Copier</button>
+        </div>
+        <p class="hint">Panneau de contrôle (pour l'ouvrir dans un navigateur) :</p>
+        <div class="copy">
+          <input type="text" id="url-control" readonly>
+          <button class="btn" type="button" data-copy="url-control">Copier</button>
+        </div>
+        <p class="hint">Picks et bans : utilisez le lien d'overlay fourni par <a href="https://drafter.lol/" target="_blank" rel="noopener noreferrer">drafter.lol</a>, dans une source navigateur séparée (par exemple sur la scène de sélection des champions).</p>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2><span aria-hidden="true">📺</span> Aperçu en direct</h2></div>
+        <div class="preview" id="preview">
+          <iframe id="preview-frame" src="/overlay?preview=1" title="Aperçu de l'overlay" tabindex="-1"></iframe>
+        </div>
+        <p class="hint">Ce que verra OBS (le fond à rayures n'existe que dans cet aperçu).</p>
+      </section>
+
+      <p class="legal">Ce projet n'est ni approuvé ni affilié à Riot Games. League of Legends est une marque de Riot Games, Inc.</p>
+    </div>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/control/control.js"></script>
+</body>
+</html>

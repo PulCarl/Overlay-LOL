@@ -1,0 +1,25 @@
+{
+  "name": "lol-overlay",
+  "version": "1.0.0",
+  "description": "Overlay OBS pour League of Legends, alimenté par la Live Client Data API locale du jeu.",
+  "private": true,
+  "main": "app/main.js",
+  "scripts": {
+    "start": "node server.js",
+    "demo": "node server.js --demo",
+    "app": "electron .",
+    "build:app": "node build/build-app.js",
+    "build:exe": "node build/build-exe.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "electron": "44.9.0",
+    "esbuild": "^0.28.2",
+    "postject": "1.0.0-alpha.6",
+    "rcedit": "^5.0.2"
+  },
+  "license": "MIT"
+}

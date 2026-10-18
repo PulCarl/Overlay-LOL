@@ -1,0 +1,18 @@
+# Données locales : réglages, logos envoyés, presets, journal, position de la fenêtre.
+data/
+*.log
+*.log.old
+
+# Programmes fabriqués et fichiers de fabrication.
+dist/
+build/out/
+node_modules/
+
+# Réglages d'outils et d'éditeurs, secrets, fichiers du système.
+.claude/
+.vscode/
+.idea/
+.env
+.env.*
+Thumbs.db
+.DS_Store

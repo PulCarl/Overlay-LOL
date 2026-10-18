@@ -78,6 +78,7 @@ body.preview {
 #scorebar,
 #feed,
 #banners,
+#sides,
 #players,
 #sponsor,
 #hint {
@@ -576,15 +577,16 @@ body.preview {
 
 /* ------------------------------------------------------------ fil d'actions */
 
+/* Petit et discret : il se place sous les champions des côtés (voir « #sides »). */
 #feed {
   position: absolute;
   left: 24px;
-  top: 300px;
-  width: 460px;
+  top: 492px;
+  width: 340px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
+  gap: 4px;
   transform: scale(var(--ui));
   transform-origin: 0 0;
 }
@@ -593,12 +595,12 @@ body.preview {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 9px;
-  height: 44px;
-  max-width: 460px;
-  padding: 5px 24px 5px 14px;
+  gap: 7px;
+  height: 32px;
+  max-width: 340px;
+  padding: 3px 20px 3px 11px;
   background: linear-gradient(90deg, rgba(72, 2, 222, 0.35), var(--panel) 40%);
-  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%);
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%);
   opacity: 0;
   transform: translateX(-30px);
   transition: opacity 0.25s ease, transform 0.25s ease;
@@ -609,7 +611,7 @@ body.preview {
   left: 0;
   top: 0;
   bottom: 0;
-  width: 4px;
+  width: 3px;
   background: var(--c);
 }
 .frow.red {
@@ -623,13 +625,28 @@ body.preview {
   opacity: 0;
   transform: translateX(-30px);
 }
+.frow .ico.sm {
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+}
+.frow .ico.champ.ring-blue {
+  box-shadow: 0 0 0 1.5px var(--blue);
+}
+.frow .ico.champ.ring-red {
+  box-shadow: 0 0 0 1.5px var(--red);
+}
+.frow .ico .ini,
+.frow .ico.npc .ini {
+  font-size: 11px;
+}
 .fn {
-  font: 600 15px/1 var(--txt);
+  font: 600 12.5px/1 var(--txt);
   letter-spacing: 0.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 110px;
+  max-width: 84px;
 }
 .fn.killer {
   color: var(--c);
@@ -639,12 +656,12 @@ body.preview {
 }
 .frow .arrow svg {
   display: block;
-  width: 20px;
-  height: 11px;
+  width: 15px;
+  height: 8px;
   fill: var(--c);
 }
 .assist {
-  font: 700 15px/1 var(--txt);
+  font: 700 12.5px/1 var(--txt);
   color: var(--purple-l);
 }
 .frow.tower .fn {
@@ -653,12 +670,12 @@ body.preview {
 }
 .tw-ico svg {
   display: block;
-  width: 26px;
-  height: 26px;
+  width: 19px;
+  height: 19px;
   fill: var(--c);
 }
 .ftag {
-  font: 400 15px/1 var(--disp);
+  font: 400 12.5px/1 var(--disp);
   letter-spacing: 0.05em;
   color: var(--c);
 }
@@ -775,6 +792,97 @@ body.preview {
   font: 500 17px/1.1 var(--txt);
   letter-spacing: 0.04em;
   color: var(--silver);
+}
+
+/* ------------------------------------------------ champions sur les côtés */
+
+#sides {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.scol {
+  position: absolute;
+  top: 132px;
+  width: 218px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transform: scale(var(--ui));
+}
+.scol.blue {
+  left: 24px;
+  transform-origin: 0 0;
+}
+.scol.red {
+  right: 24px;
+  transform-origin: 100% 0;
+}
+.srow {
+  --c: var(--blue);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 62px;
+  padding: 3px 18px 3px 4px;
+  background: linear-gradient(90deg, rgba(72, 2, 222, 0.5), var(--panel) 55%);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+  transition: opacity 0.3s ease;
+}
+.srow.red {
+  --c: var(--red);
+  flex-direction: row-reverse;
+  text-align: right;
+  padding: 3px 4px 3px 18px;
+  background: linear-gradient(270deg, rgba(72, 2, 222, 0.5), var(--panel) 55%);
+  clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%);
+}
+.srow::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--c);
+}
+.srow.red::before {
+  left: auto;
+  right: 0;
+}
+.srow .ico.champ {
+  width: 54px;
+  height: 54px;
+  box-shadow: 0 0 0 2px var(--c);
+}
+.srow .lvl {
+  font-size: 12px;
+  padding: 2px 6px 2px 7px;
+}
+.srow .resp {
+  font-size: 21px;
+}
+.s-id {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+}
+.srow .pn {
+  font-size: 15px;
+}
+.srow .kda {
+  font-size: 18px;
+}
+.srow.dead {
+  opacity: 0.6;
+}
+.srow.dead .ico.champ img,
+.srow.dead .ico.champ .ini {
+  filter: grayscale(1) brightness(0.55);
 }
 
 /* ------------------------------------------------ tableau des joueurs (échelle) */

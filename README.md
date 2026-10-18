@@ -44,7 +44,7 @@ Un overlay de diffusion pour OBS, sur le même principe que JotaOverlay pour Roc
    - *Si vous diffusez en 1280×720, laissez quand même la source en 1920×1080 : OBS la réduit avec le reste de la scène.*
 3. **Régler le panneau de contrôle**
    - [ ] Onglet **Principal** : noms, tags et logos des équipes, format de la série (BO1, BO3, BO5 ou BO7).
-   - [ ] Onglet **Affichage** : mode **Joueur** (le bas de l'écran reste libre pour la barre des sorts) ou **Spectateur** (tableau des joueurs en bas).
+   - [ ] Onglet **Affichage** : mode **Joueur** (le bas de l'écran reste libre pour la barre des sorts) ou **Spectateur** (tableau des joueurs en bas), et les interrupteurs de chaque élément, dont les champions sur les côtés.
    - [ ] Chaque changement est enregistré tout de suite, il n'y a pas de bouton « Enregistrer ».
 4. **Picks et bans** *(facultatif, scène dédiée)*
    - [ ] La source `/overlay` les affiche déjà toute seule pendant la sélection des champions.
@@ -85,7 +85,8 @@ Pas de match sous la main ? Dans l'onglet **Affichage**, « Charger le match d'e
 - **Barre de score** en haut au centre
   - Plaque centrale : kills de chaque équipe, chrono et jauge de valeur des objets.
   - De chaque côté : logo, tag, nom et pastilles de série, puis un bandeau avec les tours, inhibiteurs, dragons (losanges colorés selon l'élément, mention « Âme » à 4), hérauts, barons et valeur des objets.
-- **Fil d'actions** à gauche : kills (tueur → victime, assistances) et tours détruites.
+- **Champions sur les côtés** : une colonne par équipe, la bleue à gauche et la rouge à droite, avec pour chaque joueur le portrait du champion, son niveau, son pseudo et son K/D/A. Un joueur mort se grise et son temps de réapparition remplace le niveau. Interrupteur « Champions sur les côtés » dans l'onglet Affichage du panneau.
+- **Fil d'actions** : kills (tueur → victime, assistances) et tours détruites, en petit, sous la colonne de gauche.
 - **Bandeaux d'objectifs** sous la barre : dragons (volés ou non), Nashor, Héraut, Atakhan, inhibiteurs, premier sang, triple, quadra et pentakill, ace.
 - **Tableau des joueurs** en bas au centre : deux colonnes de 5 lignes alignées par poste, avec champion, niveau, nom, K/D/A, objets et CS, et le temps de réapparition des joueurs morts. Affiché par défaut en mode spectateur.
 - **Picks et bans** plein écran pendant la sélection des champions : bans barrés, cinq grandes colonnes par équipe avec l'illustration du champion et le nom du joueur, chrono, étape en cours, équipe qui joue et score de la série.

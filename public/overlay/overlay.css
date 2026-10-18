@@ -231,11 +231,11 @@ body.preview {
   position: absolute;
   left: 50%;
   top: 0;
-  width: 1240px;
+  width: 1280px;
   height: 108px;
-  margin-left: -620px;
+  margin-left: -640px;
   display: grid;
-  grid-template-columns: 500px 240px 500px;
+  grid-template-columns: 520px 240px 520px;
   transform: scale(var(--ui));
   transform-origin: 50% 0;
   filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5));
@@ -377,7 +377,7 @@ body.preview {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   height: 36px;
   padding: 0 16px 0 22px;
   background: var(--panel-deep);
@@ -390,11 +390,11 @@ body.preview {
   display: flex;
   align-items: center;
   gap: 5px;
-  height: 24px;
+  height: 28px;
   padding: 0 9px 0 10px;
   background: rgba(158, 66, 237, 0.16);
   clip-path: polygon(7px 0, 100% 0, calc(100% - 7px) 100%, 0 100%);
-  font: 700 15px/1 var(--txt);
+  font: 700 16px/1 var(--txt);
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
@@ -406,8 +406,9 @@ body.preview {
   display: flex;
 }
 .chip-ico svg {
-  width: 15px;
-  height: 15px;
+  display: block;
+  width: 19px;
+  height: 19px;
   fill: var(--purple-l);
 }
 .chip.gd {
@@ -425,18 +426,15 @@ body.preview {
 .dr-list {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
 }
+/* Un losange par dragon pris : sa couleur donne le type (infernal, océan, montagne…). */
 .dr {
   display: block;
   width: 9px;
   height: 9px;
   transform: rotate(45deg);
-  border: 2px solid rgba(255, 255, 255, 0.25);
-}
-.dr.on {
   background: var(--d);
-  border-color: var(--d);
   box-shadow: 0 0 8px color-mix(in srgb, var(--d) 60%, transparent);
 }
 .soul {
@@ -491,8 +489,8 @@ body.preview {
 }
 .sb-swords svg {
   display: block;
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   fill: var(--silver);
 }
 .sb-timer {
@@ -655,8 +653,8 @@ body.preview {
 }
 .tw-ico svg {
   display: block;
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   fill: var(--c);
 }
 .ftag {
@@ -722,10 +720,22 @@ body.preview {
   height: 62px;
   box-shadow: 0 0 0 3px var(--accent);
 }
+.b-mark {
+  flex: none;
+  margin-left: 6px;
+}
+.b-mark svg {
+  display: block;
+  width: 58px;
+  height: 58px;
+  fill: var(--accent);
+  opacity: 0.9;
+  filter: drop-shadow(0 0 10px var(--accent));
+}
 .b-glyph svg {
   display: block;
-  width: 46px;
-  height: 46px;
+  width: 56px;
+  height: 56px;
   fill: var(--accent);
   filter: drop-shadow(0 0 10px var(--accent));
 }
@@ -914,7 +924,7 @@ body.preview {
   position: absolute;
   left: 24px;
   top: 24px;
-  max-width: 290px;
+  max-width: 270px;
   min-height: 48px;
   display: flex;
   align-items: center;

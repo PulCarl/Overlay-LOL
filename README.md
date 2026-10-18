@@ -197,6 +197,12 @@ data/                  configuration et logos (créé au premier lancement ; à 
 
 Pour les développeurs : `GET /api/state` renvoie l'état complet, `GET /events` le diffuse en Server-Sent Events. Les routes qui modifient quelque chose n'acceptent que du JSON envoyé par une page servie par le serveur lui-même.
 
+## Crédits
+
+- **Icônes des objectifs** (tour, inhibiteur, dragon, héraut, Nashor, or, épées croisées) : [game-icons.net](https://game-icons.net), licence [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). Icons made by **Lorc** (`white-tower`, `crystal-growth`, `dragon-head`, `beast-eye`, `horned-skull`, `crossed-swords`) and **Delapouite** (`two-coins`). Les tracés sont repris tels quels et seulement recolorés par la feuille de style.
+- **Polices** : Bruno Ace SC et Chakra Petch (SIL Open Font License 1.1).
+- **Icônes de champions et d'objets**, et illustrations des champions : Data Dragon, le service public de Riot Games pour les développeurs.
+
 ## Licence
 
-Le code est publié sous licence [MIT](LICENSE). Les polices Bruno Ace SC et Chakra Petch sont sous licence SIL Open Font License 1.1 (voir `public/shared/fonts/LICENSE-*.txt`). Les noms, logos et marques cités (League of Legends, Riot Games, Genesis, OBS…) appartiennent à leurs propriétaires respectifs.
+Le code est publié sous licence [MIT](LICENSE). Les polices Bruno Ace SC et Chakra Petch sont sous licence SIL Open Font License 1.1 (voir `public/shared/fonts/LICENSE-*.txt`), et les icônes de game-icons.net sous licence CC BY 3.0 (voir « Crédits »). Les noms, logos et marques cités (League of Legends, Riot Games, Genesis, OBS…) appartiennent à leurs propriétaires respectifs.

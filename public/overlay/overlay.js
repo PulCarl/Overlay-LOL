@@ -8,6 +8,8 @@
   const params = new URLSearchParams(location.search);
   const PREVIEW = params.get('preview') === '1';
   if (PREVIEW) document.body.classList.add('preview');
+  // ?view=draft : source OBS réservée aux picks et bans (scène de sélection des champions), sans le reste.
+  const VIEW_DRAFT = params.get('view') === 'draft';
 
   const FEED_MAX = 5;
   const FEED_TTL = 8000;
@@ -723,10 +725,162 @@
     endEl.append(inner);
   }
 
+  /* ------------------------------------------------------ picks et bans (sélection des champions) */
+
+  const draftEl = $('draft');
+  const dv = { built: false, shape: '', sides: {}, cols: {}, cards: { ORDER: [], CHAOS: [] }, leftMs: 0, at: 0, infinite: false };
+
+  const loadingImg = (key) => loadingArt(key);
+
+  function buildDraftSide(side) {
+    const root = el('div', 'dr-side ' + sideCls(side));
+    const ident = el('div', 'dr-ident');
+    const logo = el('div', 'logo-box dr-logo');
+    const text = el('div', 'dr-text');
+    const tag = el('span', 'dr-tag');
+    const name = el('div', 'dr-name');
+    text.append(tag, name);
+    ident.append(logo, text);
+    const bans = el('div', 'dr-bans');
+    root.append(ident, bans);
+    return { root, logo, tag, name, bans, banKey: '' };
+  }
+
+  function buildDraftCard(side) {
+    const root = el('div', 'dr-card ' + sideCls(side));
+    const art = el('div', 'dr-art');
+    art.append(el('span', 'ini'));
+    const info = el('div', 'dr-info');
+    const pos = el('div', 'dr-pos');
+    const champ = el('div', 'dr-champ');
+    const who = el('div', 'dr-who');
+    info.append(champ, who);
+    const state = el('div', 'dr-state');
+    root.append(art, pos, info, state);
+    return { root, art, pos, champ, who, state, imgKey: '' };
+  }
+
+  function buildDraft(d) {
+    draftEl.textContent = '';
+    const top = el('div', 'dr-top');
+    dv.sides = { ORDER: buildDraftSide('ORDER'), CHAOS: buildDraftSide('CHAOS') };
+    const center = el('div', 'dr-center');
+    const inner = el('div', 'dr-center-in');
+    dv.score = el('div', 'dr-score');
+    dv.scoreL = el('div', 'dr-pips blue');
+    dv.scoreR = el('div', 'dr-pips red');
+    dv.fmt = el('span', 'dr-fmt');
+    dv.score.append(dv.scoreL, dv.fmt, dv.scoreR);
+    dv.scoreKey = '';
+    dv.step = el('div', 'dr-step');
+    dv.timer = el('div', 'dr-timer');
+    dv.turn = el('div', 'dr-turn');
+    inner.append(dv.score, dv.step, dv.timer, dv.turn);
+    center.append(inner);
+    top.append(dv.sides.ORDER.root, center, dv.sides.CHAOS.root);
+    draftEl.append(top);
+    for (const side of ['ORDER', 'CHAOS']) {
+      const col = el('div', 'dr-col ' + sideCls(side));
+      dv.cards[side] = d.teams[side].picks.map(() => buildDraftCard(side));
+      dv.cards[side].forEach((c) => col.append(c.root));
+      draftEl.append(col);
+    }
+    dv.built = true;
+  }
+
+  function renderBans(ref, bans) {
+    const key = bans.map((b) => `${b.id}:${b.state}:${b.championId}`).join('|') + '/' + (S && S.ddragon);
+    if (ref.banKey === key) return;
+    ref.banKey = key;
+    ref.bans.textContent = '';
+    for (const b of bans) {
+      const slot = el('div', 'ban ' + b.state);
+      if (b.state === 'done') slot.append(icon('champ', b.key, b.name, 'ban-ico'));
+      slot.append(el('i', 'slash'));
+      slot.title = b.name || '';
+      ref.bans.append(slot);
+    }
+  }
+
+  function renderCard(ref, p) {
+    ref.root.className = `dr-card ${ref.root.classList.contains('red') ? 'red' : 'blue'} ${p.state}${p.local ? ' local' : ''}`;
+    setText(ref.pos, p.position || '');
+    setText(ref.champ, p.name || '—');
+    setText(ref.who, p.player || '');
+    setText(ref.state, p.state === 'active' ? 'Sélection…' : p.state === 'hover' ? 'Survol' : '');
+    const key = p.key && S.ddragon ? p.key : '';
+    if (ref.imgKey !== key) {
+      ref.imgKey = key;
+      ref.art.classList.remove('ok');
+      const old = ref.art.querySelector('img');
+      if (old) old.remove();
+      if (key) {
+        const img = new Image();
+        img.alt = '';
+        img.onload = () => ref.art.classList.add('ok');
+        img.onerror = () => img.remove();
+        img.src = loadingImg(key);
+        ref.art.append(img);
+      }
+    }
+    setText(ref.art.querySelector('.ini'), p.name ? initials(p.name) : '');
+  }
+
+  /* Score de la série : un rond par victoire nécessaire, plein quand elle est acquise (la gauche suit le côté bleu). */
+  function renderDraftScore() {
+    const need = cfg.series.format === 1 ? 0 : Math.ceil(cfg.series.format / 2);
+    const key = `${need}:${cfg.series.blue}:${cfg.series.red}`;
+    if (dv.scoreKey === key) return;
+    dv.scoreKey = key;
+    dv.scoreL.textContent = '';
+    dv.scoreR.textContent = '';
+    for (let i = 0; i < need; i++) {
+      dv.scoreL.append(el('i', i < cfg.series.blue ? 'on' : ''));
+      dv.scoreR.append(el('i', i < cfg.series.red ? 'on' : ''));
+    }
+    setText(dv.fmt, need ? `BO${cfg.series.format}` : '');
+    dv.score.style.display = need ? '' : 'none';
+  }
+
+  function renderDraft(d) {
+    const shape = d.teams.ORDER.picks.length + ':' + d.teams.CHAOS.picks.length;
+    if (!dv.built || shape !== dv.shape) {
+      dv.shape = shape;
+      buildDraft(d);
+    }
+    renderDraftScore();
+    for (const side of ['ORDER', 'CHAOS']) {
+      const slot = side === 'ORDER' ? 'blue' : 'red';
+      const t = cfg.teams[slot];
+      const ref = dv.sides[side];
+      setLogo(ref.logo, t.logo, t.tag);
+      setText(ref.tag, t.tag || (slot === 'blue' ? 'BLU' : 'RED'));
+      setText(ref.name, t.name);
+      ref.root.classList.toggle('active', d.active.includes(side));
+      renderBans(ref, d.teams[side].bans);
+      d.teams[side].picks.forEach((p, i) => renderCard(dv.cards[side][i], p));
+    }
+    setText(dv.step, d.label);
+    const names = d.active.map((side) => teamNameOf(side));
+    const verb = d.activeType === 'ban' ? 'bannit' : 'choisit';
+    setText(dv.turn, d.active.length === 1 ? `${names[0]} ${verb}` : d.active.length > 1 ? `Les deux équipes ${d.activeType === 'ban' ? 'bannissent' : 'choisissent'}` : '');
+    dv.leftMs = d.timer.leftMs;
+    dv.infinite = d.timer.infinite;
+    dv.at = performance.now();
+    updateDraftTimer();
+  }
+
+  function updateDraftTimer() {
+    if (!dv.built || !S || !S.draft || !S.draft.data) return;
+    const left = Math.max(0, dv.leftMs - (performance.now() - dv.at));
+    setDigits(dv.timer, dv.infinite || !dv.leftMs ? '--' : String(Math.ceil(left / 1000)).padStart(2, '0'));
+  }
+  setInterval(updateDraftTimer, 200);
+
   /* -------------------------------------------------------------- orchestration */
 
   const hint = $('hint');
-  hint.textContent = 'Aperçu · en attente d\'une partie';
+  hint.textContent = VIEW_DRAFT ? 'Aperçu · en attente de la sélection des champions' : 'Aperçu · en attente d\'une partie';
 
   function onState(s) {
     const first = !S;
@@ -735,8 +889,10 @@
     recvAt = performance.now();
     stage.style.setProperty('--ui', cfg.display.scale || 1);
 
-    const live = (s.status === 'ingame' || s.status === 'ended') && !!s.game;
-    const endVisible = !!(s.endScreen && s.endScreen.visible && s.endGame);
+    const draftOn = !!(s.draft && s.draft.visible && s.draft.data);
+    const live = (s.status === 'ingame' || s.status === 'ended') && !!s.game && !VIEW_DRAFT;
+    // Pendant une sélection des champions, l'écran de fin de la partie précédente s'efface.
+    const endVisible = !!(s.endScreen && s.endScreen.visible && s.endGame) && !draftOn && !VIEW_DRAFT;
 
     // Nouvelle partie : on repart de zéro et on ne rejoue pas les événements déjà présents.
     const key = s.gameId + ':' + (s.demo ? 'd' : '');
@@ -763,16 +919,19 @@
 
     renderSponsors();
 
-    const hud = live && !endVisible;
+    const hud = live && !endVisible && !draftOn;
     bar.classList.toggle('off', !(hud && cfg.display.scoreboard));
     feedEl.classList.toggle('off', !(hud && cfg.display.feed));
     bannersEl.classList.toggle('off', !(hud && cfg.display.banners));
     playersEl.classList.toggle('off', !(hud && showPlayers()));
-    sponsorEl.classList.toggle('off', !(cfg.display.sponsors && sponsorItems().length && !endVisible));
-    hint.classList.toggle('on', PREVIEW && !live && !endVisible);
+    sponsorEl.classList.toggle('off', !(cfg.display.sponsors && sponsorItems().length && !endVisible && !draftOn && !VIEW_DRAFT));
+    hint.classList.toggle('on', PREVIEW && (VIEW_DRAFT ? !draftOn : !live && !endVisible && !draftOn));
 
     if (endVisible) renderEnd(s.endGame);
     endEl.classList.toggle('show', endVisible);
+
+    if (draftOn) renderDraft(s.draft.data);
+    draftEl.classList.toggle('show', draftOn);
   }
 
   buildScorebar();

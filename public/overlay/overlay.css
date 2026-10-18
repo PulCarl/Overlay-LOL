@@ -1394,6 +1394,430 @@ body.preview {
   opacity: 1;
 }
 
+/* ------------------------------------------------------------ picks et bans (plein écran) */
+
+/*
+ * La vue occupe tout l'écran, fond compris : bandeau en haut (équipes, bans, chrono, score de la série),
+ * puis cinq grandes colonnes par équipe avec l'illustration de chaque champion choisi.
+ */
+#draft {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(1200px 620px at 50% -12%, rgba(158, 66, 237, 0.45), transparent 66%),
+    radial-gradient(1000px 520px at 50% 112%, rgba(72, 2, 222, 0.34), transparent 70%),
+    repeating-linear-gradient(115deg, transparent 0 84px, rgba(158, 66, 237, 0.05) 84px 86px),
+    linear-gradient(180deg, #06070f, var(--black));
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+#draft.show {
+  opacity: 1;
+  visibility: visible;
+}
+/* Filet lumineux entre les deux équipes. */
+#draft::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 150px;
+  bottom: 40px;
+  width: 2px;
+  margin-left: -1px;
+  background: linear-gradient(180deg, transparent, var(--purple), transparent);
+  opacity: 0.7;
+}
+
+.dr-top {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 0;
+  height: 126px;
+  display: grid;
+  grid-template-columns: 1fr 250px 1fr;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5));
+}
+.dr-side {
+  --c: var(--blue);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  height: 98px;
+  padding: 3px 30px 0 26px;
+  background: linear-gradient(90deg, rgba(72, 2, 222, 0.7), var(--panel) 62%);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 30px 100%, 0 calc(100% - 30px));
+}
+.dr-side.red {
+  --c: var(--red);
+  flex-direction: row-reverse;
+  padding: 3px 26px 0 30px;
+  background: linear-gradient(270deg, rgba(72, 2, 222, 0.7), var(--panel) 62%);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 30px), calc(100% - 30px) 100%, 0 100%);
+}
+.dr-side::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 3px;
+  background: var(--grad-head);
+}
+.dr-side.red::before {
+  background: linear-gradient(270deg, #4802de, #9e42ed);
+}
+.dr-side::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 3px;
+  bottom: 30px;
+  width: 4px;
+  background: var(--c);
+  box-shadow: 0 0 14px var(--c);
+}
+.dr-side.red::after {
+  left: auto;
+  right: 0;
+}
+.dr-ident {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+.dr-side.red .dr-ident {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+.dr-logo {
+  width: 58px;
+  height: 58px;
+}
+.dr-text {
+  min-width: 0;
+}
+.dr-tag {
+  display: inline-block;
+  padding: 3px 16px 3px 12px;
+  background: var(--grad-head);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 9px) 100%, 0 100%);
+  font: 400 17px/1.2 var(--disp);
+  letter-spacing: 0.06em;
+  color: #fff;
+}
+.dr-side.red .dr-tag {
+  padding: 3px 12px 3px 16px;
+  background: linear-gradient(270deg, #4802de, #9e42ed);
+  clip-path: polygon(9px 0, 100% 0, 100% 100%, 0 100%);
+}
+.dr-name {
+  margin-top: 4px;
+  max-width: 260px;
+  font: 600 17px/1.2 var(--txt);
+  letter-spacing: 0.04em;
+  color: var(--silver);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dr-side.active .dr-tag {
+  box-shadow: 0 0 18px var(--purple);
+}
+
+/* Bans : un emplacement par ban, grisé et barré une fois le champion banni. */
+.dr-bans {
+  display: flex;
+  gap: 8px;
+}
+.dr-side.red .dr-bans {
+  flex-direction: row-reverse;
+}
+.ban {
+  position: relative;
+  flex: none;
+  width: 60px;
+  height: 60px;
+  background: rgba(0, 1, 3, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(158, 66, 237, 0.4);
+}
+.ban.pending {
+  opacity: 0.5;
+}
+.ban.none {
+  opacity: 0.45;
+}
+.ban.active {
+  box-shadow: 0 0 0 2px var(--c), 0 0 16px var(--c);
+  animation: dr-pulse 0.9s ease-in-out infinite alternate;
+}
+.ban .ico {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+.ban.done .ico img,
+.ban.done .ico .ini {
+  filter: grayscale(1) brightness(0.7);
+}
+.ban .slash {
+  position: absolute;
+  inset: 0;
+  display: none;
+  background: linear-gradient(to top right, transparent calc(50% - 1.5px), var(--red) calc(50% - 1.5px), var(--red) calc(50% + 1.5px), transparent calc(50% + 1.5px));
+}
+.ban.done .slash,
+.ban.none .slash {
+  display: block;
+}
+@keyframes dr-pulse {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Plaque centrale : score de la série, étape, chrono et équipe qui joue. */
+.dr-center {
+  position: relative;
+  z-index: 3;
+  height: 126px;
+  margin: 0 -1px;
+  background: var(--grad-head);
+  clip-path: polygon(0 0, 100% 0, 100% 60%, 90% 100%, 10% 100%, 0 60%);
+}
+.dr-center-in {
+  position: absolute;
+  inset: 0 2px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 10px;
+  background: linear-gradient(180deg, #05060d, var(--night) 88%);
+  clip-path: polygon(0 0, 100% 0, 100% 60%, 90% 100%, 10% 100%, 0 60%);
+}
+.dr-score {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 16px;
+  margin-bottom: 6px;
+}
+.dr-pips {
+  display: flex;
+  gap: 5px;
+}
+.dr-pips i {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+}
+.dr-pips.blue i.on {
+  background: var(--blue);
+  border-color: var(--blue);
+  box-shadow: 0 0 8px var(--blue);
+}
+.dr-pips.red i.on {
+  background: var(--red);
+  border-color: var(--red);
+  box-shadow: 0 0 8px var(--red);
+}
+.dr-fmt {
+  font: 400 11px/1 var(--disp);
+  letter-spacing: 0.1em;
+  color: var(--text2);
+}
+.dr-step {
+  font: 400 12px/1 var(--disp);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--purple-l);
+}
+.dr-timer {
+  display: flex;
+  justify-content: center;
+  height: 46px;
+  margin-top: 4px;
+  font: 400 42px/46px var(--disp);
+  color: var(--silver);
+}
+.dr-timer .dg {
+  display: block;
+  width: 0.95em;
+  text-align: center;
+}
+.dr-timer .sep {
+  display: block;
+  width: 0.5em;
+  text-align: center;
+}
+.dr-turn {
+  max-width: 200px;
+  font: 600 13px/1.2 var(--txt);
+  letter-spacing: 0.06em;
+  color: var(--text2);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Picks : cinq grandes colonnes par équipe, avec l'illustration du champion. */
+.dr-col {
+  position: absolute;
+  top: 148px;
+  width: 900px;
+  height: 908px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+.dr-col.blue {
+  left: 24px;
+}
+.dr-col.red {
+  right: 24px;
+}
+.dr-card {
+  --c: var(--blue);
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(72, 2, 222, 0.35), var(--night) 70%);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 30px), calc(100% - 30px) 100%, 0 100%);
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.45));
+}
+.dr-card.red {
+  --c: var(--red);
+}
+/* Trait de la couleur du côté, en bas de chaque colonne. */
+.dr-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 30px;
+  bottom: 0;
+  z-index: 3;
+  height: 6px;
+  background: var(--c);
+}
+.dr-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(0, 1, 3, 0.55) 0, transparent 20%, transparent 52%, rgba(0, 1, 3, 0.94) 100%);
+}
+.dr-art {
+  position: absolute;
+  inset: 0;
+}
+.dr-art .ini {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font: 400 54px/1 var(--disp);
+  color: rgba(158, 66, 237, 0.4);
+  transition: opacity 0.3s;
+}
+.dr-art img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 22%;
+  opacity: 0;
+  transition: opacity 0.5s, filter 0.3s;
+}
+.dr-art.ok img {
+  opacity: 1;
+}
+.dr-art.ok .ini {
+  opacity: 0;
+}
+.dr-card.empty .dr-art {
+  opacity: 0.25;
+}
+.dr-card.hover .dr-art img {
+  opacity: 0.5;
+  filter: grayscale(0.5);
+}
+.dr-info {
+  position: absolute;
+  z-index: 2;
+  left: 16px;
+  right: 16px;
+  bottom: 24px;
+  text-align: center;
+}
+.dr-pos {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  top: 16px;
+  font: 600 14px/1 var(--txt);
+  letter-spacing: 0.22em;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--purple-l);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+}
+.dr-champ {
+  margin: 0 0 6px;
+  font: 400 24px/1.12 var(--disp);
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+}
+.dr-card.empty .dr-champ {
+  color: var(--text2);
+}
+.dr-card.hover .dr-champ {
+  color: var(--text2);
+  font-style: italic;
+}
+.dr-who {
+  font: 600 18px/1.2 var(--txt);
+  letter-spacing: 0.04em;
+  color: var(--silver);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dr-state {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  top: 44px;
+  font: 400 12px/1 var(--disp);
+  letter-spacing: 0.18em;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--c);
+  text-shadow: 0 0 12px var(--c);
+}
+.dr-card.active .dr-state {
+  animation: dr-pulse 0.9s ease-in-out infinite alternate;
+}
+.dr-card.active::before {
+  height: 10px;
+  box-shadow: 0 0 22px var(--c);
+  animation: dr-pulse 0.9s ease-in-out infinite alternate;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

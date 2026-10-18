@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "demo": "node server.js --demo",
+    "test": "node --test",
     "app": "electron .",
     "build:app": "node build/build-app.js",
     "build:exe": "node build/build-exe.js"

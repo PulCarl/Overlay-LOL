@@ -19,6 +19,7 @@ La source de données est l'API officielle et locale du jeu, la *Live Client Dat
 - **Tableau des joueurs** en bas au centre : deux colonnes de 5 lignes alignées par poste, avec champion, niveau, nom, K/D/A, objets et CS, et le temps de réapparition des joueurs morts. Affiché par défaut en mode spectateur.
 - **Sponsors** en rotation en haut à gauche.
 - **Écran de fin** plein écran : équipe gagnante, score de la série, MVP, tableau des 10 joueurs et comparatif des objectifs.
+- **Picks et bans** plein écran pendant la sélection des champions : bans barrés, cinq grandes colonnes par équipe avec l'illustration du champion et le nom du joueur, chrono, étape en cours, équipe qui joue et score de la série (voir « Picks et bans »).
 
 ### Design
 
@@ -87,9 +88,9 @@ Gardez la source par-dessus la capture de League of Legends. Si vous diffusez en
 
 Le panneau de contrôle affiche ces adresses avec un bouton « Copier ».
 
-### Picks et bans
+### Une source pour les picks et bans
 
-Les picks et les bans passent par [drafter.lol](https://drafter.lol/), pas par cet overlay. Ajoutez le lien d'overlay fourni par drafter.lol comme **source navigateur séparée**, par exemple sur votre scène de sélection des champions. La Live Client Data API n'existe pas avant le début de la partie : les deux overlays ne se gênent donc pas.
+La même adresse `/overlay` affiche les picks et bans toute seule pendant la sélection des champions, puis laisse place à l'overlay de la partie. Pour une scène OBS dédiée à la sélection, ajoutez une seconde source navigateur 1920×1080 sur **`http://localhost:3000/overlay?view=draft`** : elle n'affiche que les picks et bans, rien d'autre. Le panneau de contrôle (onglet OBS) donne les deux adresses.
 
 ## Utilisation
 
@@ -133,6 +134,21 @@ Avec `HOST=0.0.0.0`, le panneau de contrôle est accessible à tout le réseau l
 
 Chaque changement est enregistré tout de suite, il n'y a pas de bouton « Enregistrer ». Les réglages sont conservés dans `data/config.json`, les logos envoyés dans `data/uploads/`.
 
+## Picks et bans
+
+Pendant la sélection des champions, l'overlay prend tout l'écran : fond aux couleurs de la charte, bandeau du haut (équipes, bans, score de la série, étape et chrono, équipe qui joue) et dix grandes colonnes avec l'illustration de chaque champion verrouillé. Un champion survolé apparaît en grisé, la colonne de celui qui choisit pulse, et un ban se barre dès qu'il est fait. Les noms de champions sont en français.
+
+**D'où viennent les données.** Le client League of Legends ouvre une petite API locale pendant que vous êtes en sélection des champions. Le programme la lit toutes les secondes, comme Porofessor ou Blitz : il retrouve le port et le mot de passe dans le fichier `lockfile` du client (ou dans son processus, si LoL n'est pas installé dans `C:\Riot Games\League of Legends`). Il ne lit pas la mémoire du jeu et n'envoie rien hors de votre PC.
+
+**Réglages** (panneau, carte « Picks et bans » de l'onglet Principal) :
+- **Auto** : affichés pendant la sélection, effacés ensuite (si l'option « Picks et bans » de l'onglet Affichage est cochée).
+- **Afficher** : affichage forcé, avec la dernière sélection vue quand il n'y en a pas en cours. Pratique pour garder le draft à l'écran pendant le chargement de la partie.
+- **Masquer** : jamais affichés.
+
+**Ce que le client montre, l'overlay le montre, pas plus.** Il faut que *votre* client soit en sélection des champions (partie classée, normale ou personnalisée). Le client signale aussi quand on regarde un salon personnalisé en spectateur : l'overlay le gère, mais ce cas n'a pas été testé avec un vrai client. Les picks de l'équipe adverse n'apparaissent que quand le client les affiche, et les pseudos masqués par le client restent masqués. Il n'est pas possible de lire la sélection d'une partie jouée par d'autres sans y être.
+
+**À savoir.** Cette API du client n'est pas documentée officiellement par Riot : une mise à jour du jeu peut la changer. Si les picks et bans n'apparaissent pas alors que le panneau indique « Client LoL détecté », ouvrez `http://localhost:3000/api/draft/raw` pendant une sélection : c'est la réponse brute du client, utile pour comprendre ce qui a changé. Option `--no-lcu` (ou variable `NO_LCU=1`) pour désactiver complètement cette lecture. [drafter.lol](https://drafter.lol/) reste utilisable à côté pour un draft de tournoi arbitré à part.
+
 ## Mode démo
 
 ```bat
@@ -143,6 +159,7 @@ node server.js --demo --speed=12 --start=900 --spectator
 - `--speed=12` : vitesse de la partie simulée (12 fois le temps réel).
 - `--start=900` : démarre à 900 secondes de jeu (15:00).
 - `--spectator` : simule une partie vue en spectateur (pas de vainqueur automatique).
+- `--draft` : simule uniquement la sélection des champions (picks et bans), en boucle et sans partie. Pratique pour régler le design : `node server.js --demo --draft --speed=4`.
 
 La partie simulée se termine, reste en ligne quelques secondes, puis une nouvelle partie démarre.
 
@@ -183,6 +200,10 @@ Dans le panneau, cliquez sur « Tout réinitialiser ». Pour tout effacer, y com
 server.js              serveur (HTTP, Server-Sent Events, API du panneau)
 lib/game.js            transforme la réponse de l'API en état d'overlay
 lib/demo.js            simulateur de partie pour le mode démo
+lib/lcu.js             lecture du client LoL (port et mot de passe locaux)
+lib/draft.js           met en forme la sélection des champions (picks et bans)
+lib/demo-draft.js      simulateur de sélection des champions (--draft)
+test/                  tests automatiques (npm test, aucune dépendance)
 public/overlay/        l'overlay pour OBS
 public/control/        le panneau de contrôle
 public/shared/         polices de la charte (Bruno Ace SC et Chakra Petch, licence OFL)

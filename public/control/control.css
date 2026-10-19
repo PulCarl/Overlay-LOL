@@ -901,3 +901,83 @@ button:focus-visible,
 .cosmic input {
   accent-color: var(--purple);
 }
+
+/* ------------------------------------------------------------ drafter */
+
+.dr-status {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  background: var(--card2);
+  border-left: 3px solid var(--purple);
+  font: 600 16px/1.35 var(--txt);
+}
+.dr-ctl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.dr-sugg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.dr-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+.dr-link {
+  display: grid;
+  grid-template-columns: 150px 1fr auto 96px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--card2);
+  border-left: 3px solid var(--purple);
+}
+.dr-link[data-slot='blue'] {
+  border-left-color: var(--blue);
+}
+.dr-link[data-slot='red'] {
+  border-left-color: var(--red);
+}
+.dr-link-name {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+.dr-link input {
+  font: 500 13px ui-monospace, Consolas, monospace;
+}
+.dr-count {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+}
+.dr-count.on {
+  color: var(--ok);
+}
+@media (max-width: 700px) {
+  .dr-link {
+    grid-template-columns: 1fr auto;
+  }
+  .dr-link-name,
+  .dr-link input {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Les deux équipes de la préparation du drafter : même allure que sur l'onglet Principal. */
+.dr-team {
+  overflow: hidden;
+  background: var(--card2);
+  border: 1px solid var(--line);
+}
+.dr-team.red .team-band {
+  background: var(--red-band);
+}

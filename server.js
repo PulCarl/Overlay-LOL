@@ -22,6 +22,8 @@ const { computeGame, computeMvp, indexFromRunes, spellCooldown } = require('./li
 const { DemoGame } = require('./lib/demo');
 const { normalizeDraft, indexFromDdragon, indexFromClientSummary, endedIntoGame } = require('./lib/draft');
 const { LcuClient } = require('./lib/lcu');
+const { Drafter, cleanRoster } = require('./lib/drafter');
+const { createShare } = require('./lib/drafter-share');
 const { DemoDraft, DEMO_CHAMPS } = require('./lib/demo-draft');
 
 /*
@@ -63,6 +65,9 @@ const DEMO_DRAFT = DEMO && (hasFlag('draft') || DEMO_FULL);
 const LCU_ENABLED = !DEMO && !hasFlag('no-lcu') && !process.env.NO_LCU;
 
 const HOST = process.env.HOST || '127.0.0.1';
+// Le drafter partage ses pages aux joueurs sur un serveur à part (seul ce serveur est ouvert au réseau, pas le panneau).
+const DRAFTER_PORT = Number(process.env.DRAFTER_PORT) || 3002;
+const DRAFTER_HOST = process.env.DRAFTER_HOST || '0.0.0.0';
 const PORT = Number(process.env.PORT) || 3000;
 
 const GAME_API = { host: '127.0.0.1', port: 2999, path: '/liveclientdata/allgamedata' };
@@ -102,6 +107,9 @@ const DEFAULT_CONFIG = {
   display: { mode: 'player', scoreboard: true, feed: true, banners: true, players: null, sides: true, mapFrame: true, mapSize: 280, sponsors: true, draft: true, loadscreen: true, scale: 1 },
   sponsors: [],
   sponsorInterval: 12,
+  // Drafter : pseudos dans l'ordre des postes (Top, Jungle, Mid, ADC, Support), durée d'un tour, et adresse à partager
+  // (vide : l'adresse de cet ordinateur sur le réseau ; à remplir avec l'adresse d'un tunnel pour jouer à distance).
+  drafter: { roster: { blue: ['', '', '', '', ''], red: ['', '', '', '', ''] }, turnSeconds: 30, base: '' },
   presets: [],
 };
 
@@ -151,6 +159,18 @@ function applyConfigPatch(cfg, p) {
     if ('scale' in d) {
       const n = Number(d.scale);
       if (Number.isFinite(n)) cfg.display.scale = Math.round(Math.min(1.5, Math.max(0.5, n)) * 100) / 100;
+    }
+  }
+
+  if (isObj(p.drafter)) {
+    const d = p.drafter;
+    if (isObj(d.roster)) {
+      for (const k of ['blue', 'red']) if (Array.isArray(d.roster[k])) cfg.drafter.roster[k] = cleanRoster(d.roster[k]);
+    }
+    if ('turnSeconds' in d) cfg.drafter.turnSeconds = int(d.turnSeconds, 5, 300, cfg.drafter.turnSeconds);
+    if ('base' in d) {
+      const b = str(d.base, 200).replace(/\/+$/, '');
+      cfg.drafter.base = /^https?:\/\/[^\s]+$/i.test(b) ? b : '';
     }
   }
 
@@ -351,6 +371,7 @@ function publicState() {
   if (S.endScreenVisible) endGame = last || (S.game ? previewOf(S.game) : null);
   return {
     draft: draftState(),
+    drafter: drafterInfo(),
     loading: loadingState(),
     status: S.status,
     demo: DEMO,
@@ -469,6 +490,115 @@ async function loadRunes() {
 
 /* ----------------------------------------------- sélection des champions (picks et bans) */
 
+/*
+ * Drafter : un draft de tournoi mené par les joueurs sur des pages partagées (voir lib/drafter.js et lib/drafter-share.js).
+ * Tant qu'il tourne, il remplace la lecture du client LoL : l'overlay l'affiche comme une vraie sélection des champions.
+ */
+let drafter = null;
+
+const share = createShare({
+  getDrafter: () => drafter,
+  getVersion: () => S.ddragon,
+  getTeams: () => ({ ORDER: { name: config.teams.blue.name, tag: config.teams.blue.tag }, CHAOS: { name: config.teams.red.name, tag: config.teams.red.tag } }),
+  staticFile: (req, res, pathname) => serveStatic(req, res, pathname),
+  onChange: () => {
+    handleDraft(drafterRaw());
+    broadcast();
+  },
+  host: DRAFTER_HOST,
+  port: DRAFTER_PORT,
+});
+
+/* Le draft vu comme une session du client ; rien à montrer avant que le régisseur ne l'ait démarré. */
+function drafterRaw() {
+  return drafter && drafter.status !== 'lobby' ? drafter.snapshot(Date.now()) : null;
+}
+
+/* Adresse à partager : celle saisie dans le panneau (un tunnel, par exemple), sinon celle de cet ordinateur sur le réseau. */
+function drafterBase() {
+  if (config.drafter.base) return config.drafter.base;
+  return `http://${lanAddresses()[0] || 'localhost'}:${DRAFTER_PORT}`;
+}
+
+/* Ce que tout le monde peut savoir du draft (le panneau et l'overlay reçoivent ceci ; les liens, eux, ne sont jamais diffusés). */
+function drafterInfo() {
+  if (!drafter) return { active: false };
+  const v = drafter.view(Date.now());
+  return {
+    active: true,
+    status: v.status,
+    turn: v.turn,
+    total: v.total,
+    current: v.active,
+    leftMs: v.timer.leftMs,
+    running: v.timer.running,
+    clients: share.clientCounts(),
+  };
+}
+
+/* Les liens à envoyer : une page par équipe, une pour le spectateur, une pour la régie. */
+function drafterLinks() {
+  const t = share.tokens;
+  if (!drafter || !t) return { active: false };
+  const base = drafterBase();
+  const link = (role) => `${base}/d/${t[role]}`;
+  return {
+    active: true,
+    base,
+    port: DRAFTER_PORT,
+    suggestions: [...lanAddresses().map((ip) => `http://${ip}:${DRAFTER_PORT}`), `http://localhost:${DRAFTER_PORT}`],
+    links: { blue: link('ORDER'), red: link('CHAOS'), spec: link('spec'), admin: link('admin') },
+  };
+}
+
+function drafterStartError(e) {
+  if (e && e.code === 'EADDRINUSE') return `Le port ${DRAFTER_PORT} est déjà utilisé. Choisissez-en un autre : « set DRAFTER_PORT=3003 » puis relancez.`;
+  return `Impossible d'ouvrir le partage du drafter : ${e && e.message ? e.message : e}`;
+}
+
+/* Actions du régisseur : create, start, pause, resume, undo, skip, reset, close. Renvoie { error, code } ou {}. */
+async function drafterAction(body) {
+  const now = Date.now();
+  const action = String(body.action || '');
+  if (action === 'create') {
+    if (drafter) return { error: 'Un draft est déjà ouvert : fermez-le d\'abord.', code: 409 };
+    if (champs.size < 20) return { error: 'La liste des champions n\'est pas encore chargée (Data Dragon). Réessayez dans un instant.', code: 409 };
+    applyConfigPatch(config, { drafter: { roster: body.roster, turnSeconds: body.turnSeconds } });
+    saveConfig();
+    const draft = new Drafter({
+      champions: [...champs].map(([id, c]) => ({ id, key: c.key, name: c.name })),
+      roster: { ORDER: config.drafter.roster.blue, CHAOS: config.drafter.roster.red },
+      turnSeconds: config.drafter.turnSeconds,
+    });
+    share.newTokens();
+    try {
+      if (!share.listening) await share.start();
+    } catch (e) {
+      return { error: drafterStartError(e), code: 409 };
+    }
+    drafter = draft;
+    log(`Drafter ouvert : liens à partager sur ${drafterBase()} (port ${DRAFTER_PORT}).`);
+    return {};
+  }
+  if (!drafter) return { error: 'Aucun draft n\'est ouvert.', code: 409 };
+  let r = { ok: true };
+  if (action === 'start') r = drafter.start(now);
+  else if (action === 'pause') r = drafter.pause(now);
+  else if (action === 'resume') r = drafter.resume(now);
+  else if (action === 'undo') r = drafter.undo(now);
+  else if (action === 'skip') r = drafter.skip(now);
+  else if (action === 'reset') drafter.reset();
+  else if (action === 'close') {
+    drafter = null;
+    await share.stop();
+    log('Drafter fermé.');
+  } else return { error: 'Action invalide.', code: 400 };
+  if (!r.ok) return { error: r.error, code: 409 };
+  handleDraft(drafterRaw());
+  share.broadcast();
+  return {};
+}
+
 const lcu = LCU_ENABLED ? new LcuClient() : null;
 let demoDraft = null;
 let championSummaryTry = 0;
@@ -481,6 +611,11 @@ function setLcuConnected(on) {
 
 /* Réponse brute du client (ou de la démo) pour la sélection en cours, null s'il n'y en a pas. */
 async function readDraftRaw() {
+  if (drafter) {
+    drafter.tick(Date.now()); // chrono à zéro : le tour se termine tout seul
+    share.broadcast();
+    return drafterRaw();
+  }
   if (DEMO_DRAFT) return demoDraft.snapshot();
   if (!lcu) return null;
   if (!(await lcu.connect())) {
@@ -710,6 +845,7 @@ const MOUNTS = {
   '/overlay': path.join(PUBLIC_DIR, 'overlay'),
   '/control': path.join(PUBLIC_DIR, 'control'),
   '/shared': path.join(PUBLIC_DIR, 'shared'),
+  '/drafter': path.join(PUBLIC_DIR, 'drafter'),
   '/uploads': UPLOAD_DIR,
 };
 
@@ -864,6 +1000,8 @@ async function handleApi(req, res, pathname) {
   const method = req.method;
 
   if (method === 'GET' && pathname === '/api/state') return sendJson(res, 200, publicState()), true;
+  // Les liens du drafter (jamais dans l'état diffusé : ils donnent le droit de jouer).
+  if (method === 'GET' && pathname === '/api/drafter') return sendJson(res, 200, drafterLinks()), true;
   // Images des runes (vide tant que Data Dragon n'a pas répondu) : l'overlay les demande une fois, pas à chaque mise à jour.
   if (method === 'GET' && pathname === '/api/runes') return sendJson(res, 200, { runes: runeIndex }), true;
   // Dernière réponse brute du client pour la sélection des champions : sert à diagnostiquer (aucun identifiant dedans).
@@ -938,6 +1076,12 @@ async function handleApi(req, res, pathname) {
         }
         saveConfig();
         log('Côtés échangés : les équipes et leurs scores ont changé de couleur.');
+        return done();
+      }
+
+      case '/api/drafter': {
+        const r = await drafterAction(body);
+        if (r.error) return fail(res, r.code || 400, r.error), true;
         return done();
       }
 
@@ -1137,7 +1281,7 @@ function start() {
       console.log('');
       loadDdragonVersion(true);
       tick();
-      if (DEMO_DRAFT || LCU_ENABLED) tickDraft();
+      tickDraft();
       resolve({ host: HOST, port: PORT, demo: DEMO });
     });
   });

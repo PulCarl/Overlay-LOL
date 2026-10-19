@@ -1,0 +1,508 @@
+/*
+ * Page des joueurs du drafter : charte graphique Genesis.
+ * Couleurs : #D9D9D9 · #000103 · #151724 · #9E42ED · #4802DE. Polices : Bruno Ace SC (titres, chiffres) et Chakra Petch (textes).
+ */
+
+:root {
+  --bg: #07080f;
+  --night: #151724;
+  --card: #1b1d31;
+  --field: #0d0e1b;
+  --line: rgba(158, 66, 237, 0.32);
+  --text: #f6f4fb;
+  --muted: #a9a6c2;
+  --purple: #9e42ed;
+  --violet: #4802de;
+  --accent-l: #c590ff;
+  --grad: linear-gradient(90deg, #4802de, #9e42ed);
+  --blue: #5b9dff;
+  --red: #ff4d70;
+  --ok: #4fd18b;
+  --num: 'Bruno Ace SC', 'Arial Narrow', sans-serif;
+  --txt: 'Chakra Petch', 'Arial Narrow', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+[hidden] {
+  display: none !important;
+}
+html {
+  color-scheme: dark;
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(1000px 420px at 50% -160px, rgba(158, 66, 237, 0.3), transparent 70%),
+    var(--bg);
+  color: var(--text);
+  font: 500 15px/1.4 var(--txt);
+}
+
+/* ------------------------------------------------------------ bandeau */
+
+.top {
+  display: grid;
+  grid-template-columns: 1fr 260px 1fr;
+  align-items: stretch;
+  min-height: 108px;
+  padding: 0 16px;
+}
+.side {
+  --c: var(--blue);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 22px;
+  background: linear-gradient(90deg, rgba(72, 2, 222, 0.5), var(--night) 60%);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 22px) 100%, 0 100%);
+}
+.side.red {
+  --c: var(--red);
+  align-items: flex-end;
+  background: linear-gradient(270deg, rgba(72, 2, 222, 0.5), var(--night) 60%);
+  clip-path: polygon(22px 0, 100% 0, 100% 100%, 0 100%);
+}
+.side::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--c);
+}
+.side.active::before {
+  height: 8px;
+  box-shadow: 0 0 22px var(--c);
+  animation: pulse 0.9s ease-in-out infinite alternate;
+}
+.who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.side.red .who {
+  flex-direction: row-reverse;
+}
+.tag {
+  padding: 2px 12px 3px;
+  background: var(--grad);
+  clip-path: polygon(7px 0, 100% 0, calc(100% - 7px) 100%, 0 100%);
+  font: 400 18px/1.35 var(--num);
+  letter-spacing: 0.06em;
+}
+.who b {
+  font: 700 22px/1.2 var(--txt);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.bans {
+  display: flex;
+  gap: 8px;
+}
+.side.red .bans {
+  flex-direction: row-reverse;
+}
+.ban {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  overflow: hidden;
+  background: var(--field);
+  border: 1px solid var(--line);
+}
+.ban img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(1) brightness(0.8);
+}
+.ban.done::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(45deg, transparent 47%, var(--red) 47% 53%, transparent 53%);
+}
+.ban.active {
+  border-color: var(--c);
+  animation: pulse 0.9s ease-in-out infinite alternate;
+}
+.ban.none::before {
+  content: '—';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+
+.center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 0;
+  background: linear-gradient(180deg, #05060d, var(--night));
+  border-top: 3px solid var(--purple);
+  clip-path: polygon(0 0, 100% 0, 100% 78%, 88% 100%, 12% 100%, 0 78%);
+}
+.phase {
+  max-width: 220px;
+  text-align: center;
+  font: 400 11px/1.3 var(--num);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-l);
+}
+.timer {
+  font: 400 52px/1 var(--num);
+  min-height: 52px;
+  color: #fff;
+}
+.timer.low {
+  color: var(--red);
+}
+.turn {
+  max-width: 230px;
+  text-align: center;
+  font: 600 13px/1.25 var(--txt);
+  color: var(--muted);
+}
+
+/* Bandeau « à vous de jouer » */
+.you {
+  margin: 10px 16px 0;
+  padding: 8px 14px;
+  text-align: center;
+  font: 600 15px/1.3 var(--txt);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: rgba(21, 23, 36, 0.8);
+  border-left: 4px solid var(--purple);
+}
+.you.mine {
+  color: #fff;
+  background: linear-gradient(90deg, rgba(72, 2, 222, 0.7), rgba(158, 66, 237, 0.35));
+  animation: pulse 0.9s ease-in-out infinite alternate;
+}
+
+/* ------------------------------------------------------------ scène */
+
+.stage {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr) 240px;
+  gap: 14px;
+  padding: 12px 16px 8px;
+  min-height: 0;
+}
+.picks {
+  --c: var(--blue);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.picks.red {
+  --c: var(--red);
+}
+.pick {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 74px;
+  padding: 6px;
+  background: linear-gradient(90deg, rgba(72, 2, 222, 0.4), var(--night) 70%);
+  border-left: 4px solid var(--c);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+}
+.picks.red .pick {
+  flex-direction: row-reverse;
+  text-align: right;
+  background: linear-gradient(270deg, rgba(72, 2, 222, 0.4), var(--night) 70%);
+  border-left: 0;
+  border-right: 4px solid var(--c);
+  clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%);
+}
+.pick.active {
+  box-shadow: inset 0 0 0 2px var(--c);
+}
+.pick .face {
+  flex: none;
+  width: 60px;
+  height: 60px;
+  overflow: hidden;
+  background: var(--field);
+  border: 2px solid color-mix(in srgb, var(--c) 70%, transparent);
+}
+.pick .face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pick.hover .face img {
+  opacity: 0.5;
+  filter: grayscale(0.4);
+}
+.pick .info {
+  min-width: 0;
+}
+.pick .pos {
+  font: 600 11px/1.2 var(--txt);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent-l);
+}
+.pick .player {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 700 17px/1.2 var(--txt);
+}
+.pick .champ {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 13px/1.2 var(--txt);
+  color: var(--muted);
+}
+.pick.locked .champ {
+  color: var(--text);
+}
+
+.pool {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+#search {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  background: var(--field);
+  color: var(--text);
+  font: 500 16px/1.3 var(--txt);
+}
+#search:focus {
+  border-color: var(--purple);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(158, 66, 237, 0.25);
+}
+.count {
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+  gap: 6px;
+  align-content: start;
+  /* Sans ça, la hauteur définie de la grille écrase les lignes `auto` : les tuiles se chevauchent. */
+  grid-auto-rows: max-content;
+  max-height: calc(100vh - 360px);
+  min-height: 260px;
+  overflow-y: auto;
+  padding: 2px 6px 6px 2px;
+}
+.champ-btn {
+  position: relative;
+  padding: 0;
+  border: 2px solid transparent;
+  background: var(--field);
+  color: var(--text);
+  cursor: pointer;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+}
+.champ-btn img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.champ-btn span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px 2px 2px;
+  background: linear-gradient(0deg, rgba(0, 1, 3, 0.9), transparent);
+  font: 600 10.5px/1.1 var(--txt);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.champ-btn:hover:not(:disabled) {
+  border-color: var(--accent-l);
+}
+.champ-btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+.champ-btn.sel {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px var(--purple), 0 0 18px var(--purple);
+}
+.champ-btn.theirs {
+  border-color: var(--c);
+  box-shadow: 0 0 14px var(--c);
+}
+.champ-btn.used {
+  cursor: not-allowed;
+}
+.champ-btn.used img {
+  filter: grayscale(1) brightness(0.35);
+}
+.champ-btn.used::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(45deg, transparent 47%, rgba(255, 77, 112, 0.8) 47% 53%, transparent 53%);
+}
+.champ-btn.dim {
+  cursor: default;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+}
+.slots {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.slots-label {
+  font: 600 12px/1 var(--txt);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.slots-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.slots-list button {
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--text);
+  font: 600 13px/1 var(--txt);
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.slots-list button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.slots-list button[aria-checked='true'] {
+  border-color: var(--purple);
+  background: var(--grad);
+}
+.lock {
+  margin-left: auto;
+  padding: 14px 34px;
+  border: 0;
+  background: var(--grad);
+  color: #fff;
+  font: 400 16px/1 var(--num);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+}
+.lock:hover:not(:disabled) {
+  filter: brightness(1.2);
+}
+.lock:disabled {
+  filter: grayscale(0.8) brightness(0.55);
+  cursor: not-allowed;
+}
+.msg {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-left: 4px solid var(--red);
+  background: rgba(255, 77, 112, 0.14);
+  color: #ffd3dc;
+}
+.legal {
+  margin: 4px 16px 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@keyframes pulse {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.6;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+  }
+}
+
+/* Écrans étroits : les équipes passent sous la grille. */
+@media (max-width: 1000px) {
+  .top {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .side,
+  .side.red {
+    align-items: flex-start;
+    clip-path: none;
+  }
+  .side.red .who,
+  .side.red .bans {
+    flex-direction: row;
+  }
+  .center {
+    clip-path: none;
+  }
+  .stage {
+    grid-template-columns: 1fr;
+  }
+  .picks {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .pick {
+    flex: 1 1 200px;
+  }
+  .picks.red .pick {
+    flex-direction: row;
+    text-align: left;
+  }
+  .grid {
+    max-height: 50vh;
+  }
+}

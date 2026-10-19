@@ -18,7 +18,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { spawn, spawnSync } = require('child_process');
 
-const { computeGame, computeMvp, indexFromRunes } = require('./lib/game');
+const { computeGame, computeMvp, indexFromRunes, spellCooldown } = require('./lib/game');
 const { DemoGame } = require('./lib/demo');
 const { normalizeDraft, indexFromDdragon, indexFromClientSummary } = require('./lib/draft');
 const { LcuClient } = require('./lib/lcu');
@@ -95,7 +95,8 @@ const DEFAULT_CONFIG = {
   // players: null = automatique (affiché seulement en mode spectateur).
   // draft : affiche les picks et bans pendant la sélection des champions.
   // sides : les champions de chaque équipe sur les côtés de l'écran.
-  display: { mode: 'player', scoreboard: true, feed: true, banners: true, players: null, sides: true, sponsors: true, draft: true, scale: 1 },
+  // mapFrame : un cadre autour de la minimap du jeu (en bas à droite) ; mapSize : son côté, en pixels (écran de 1920×1080).
+  display: { mode: 'player', scoreboard: true, feed: true, banners: true, players: null, sides: true, mapFrame: true, mapSize: 280, sponsors: true, draft: true, scale: 1 },
   sponsors: [],
   sponsorInterval: 12,
   presets: [],
@@ -141,7 +142,8 @@ function applyConfigPatch(cfg, p) {
   if (isObj(p.display)) {
     const d = p.display;
     if ('mode' in d && ['player', 'spectator'].includes(d.mode)) cfg.display.mode = d.mode;
-    for (const k of ['scoreboard', 'feed', 'banners', 'sides', 'sponsors', 'draft']) if (k in d) cfg.display[k] = !!d[k];
+    for (const k of ['scoreboard', 'feed', 'banners', 'sides', 'mapFrame', 'sponsors', 'draft']) if (k in d) cfg.display[k] = !!d[k];
+    if ('mapSize' in d) cfg.display.mapSize = int(d.mapSize, 160, 480, cfg.display.mapSize);
     if ('players' in d) cfg.display.players = d.players === null ? null : !!d.players;
     if ('scale' in d) {
       const n = Number(d.scale);
@@ -213,6 +215,10 @@ const S = {
   game: null, // dernière partie lue (gardée quand l'API disparaît)
   lastGame: null, // instantané de la dernière partie terminée
   endScreenVisible: false,
+  gameAt: 0, // heure (Date.now) de la dernière lecture du jeu
+  // Chronos de recharge des sorts, lancés à la main : « équipe:joueur:sort » → { endAt (heure de jeu), total }.
+  cooldowns: {},
+  cosmic: {}, // « équipe:joueur » → Perspicacité cosmique (-18 % de recharge)
   // Sélection des champions (picks et bans)
   draft: null, // sélection en cours, déjà mise en forme
   lastDraft: null, // dernière sélection vue (affichable à la demande)
@@ -301,6 +307,27 @@ function draftState() {
   };
 }
 
+/* Heure de jeu estimée à cet instant (la dernière lecture du jeu date d'une seconde au plus). */
+function gameClock() {
+  if (!S.game) return 0;
+  const running = S.status === 'ingame';
+  return S.game.gameTime + (running ? Math.min((Date.now() - S.gameAt) / 1000, 1.2) * (DEMO ? DEMO_SPEED : 1) : 0);
+}
+
+/* Durée (en secondes) que prendrait chaque sort s'il était lancé maintenant : le panneau l'affiche avant le clic. */
+function spellTotals() {
+  const out = {};
+  if (!S.game) return out;
+  for (const team of ['ORDER', 'CHAOS']) {
+    for (const p of S.game.teams[team].players) {
+      for (const slot of [0, 1]) {
+        if (p.spells[slot]) out[`${team}:${p.index}:${slot}`] = spellCooldown(p, slot, !!S.cosmic[`${team}:${p.index}`]);
+      }
+    }
+  }
+  return out;
+}
+
 function publicState() {
   const live = S.status === 'ingame' || S.status === 'ended';
   const last = S.lastGame;
@@ -314,6 +341,9 @@ function publicState() {
     ddragon: S.ddragon,
     gameId: S.gameId,
     game: live ? S.game : null,
+    cooldowns: S.cooldowns,
+    cosmic: S.cosmic,
+    spellTotals: live ? spellTotals() : {},
     hasGame: !!S.game,
     last: last ? { gameId: last.gameId, winner: last.winner, flipped: last.flipped, counted: last.counted } : null,
     endScreen: { visible: S.endScreenVisible },
@@ -504,10 +534,14 @@ function onGame(raw) {
     S.gameId += 1;
     S.signature = game.signature;
     S.endScreenVisible = false;
+    S.cooldowns = {};
+    S.cosmic = {};
     log(`Partie détectée : ${game.spectator ? 'mode spectateur' : `mode joueur (${game.activeName || '?'})`}, ${clock(game.gameTime)}.`);
   }
   S.lastGameTime = game.gameTime;
   S.game = game;
+  S.gameAt = Date.now();
+  for (const [k, c] of Object.entries(S.cooldowns)) if (c.endAt < game.gameTime - 3) delete S.cooldowns[k];
   setStatus(game.ended ? 'ended' : 'ingame');
 
   const recorded = S.lastGame && S.lastGame.gameId === S.gameId;
@@ -871,6 +905,45 @@ async function handleApi(req, res, pathname) {
         }
         saveConfig();
         log('Côtés échangés : les équipes et leurs scores ont changé de couleur.');
+        return done();
+      }
+
+      // Chrono de recharge d'un sort d'invocateur : start | clear | add (±secondes) | cosmic (on) | clearAll.
+      case '/api/cooldown': {
+        if (body.action === 'clearAll') {
+          S.cooldowns = {};
+          return done();
+        }
+        if (!S.game) return fail(res, 409, 'Aucune partie en cours.'), true;
+        const team = body.team === 'CHAOS' || body.team === 'red' ? 'CHAOS' : body.team === 'ORDER' || body.team === 'blue' ? 'ORDER' : null;
+        const index = Number(body.index);
+        const slot = Number(body.slot);
+        const p = team && Number.isInteger(index) ? S.game.teams[team].players.find((x) => x.index === index) : null;
+        if (!p) return fail(res, 400, 'Joueur inconnu.'), true;
+        const who = `${team}:${index}`;
+        const key = `${who}:${slot}`;
+        switch (body.action) {
+          case 'cosmic':
+            if (body.on) S.cosmic[who] = true;
+            else delete S.cosmic[who];
+            break;
+          case 'start': {
+            if (![0, 1].includes(slot) || !p.spells[slot]) return fail(res, 400, 'Ce joueur n\'a pas ce sort.'), true;
+            const total = spellCooldown(p, slot, !!S.cosmic[who]);
+            S.cooldowns[key] = { endAt: gameClock() + total, total };
+            break;
+          }
+          case 'clear':
+            delete S.cooldowns[key];
+            break;
+          case 'add': {
+            if (!S.cooldowns[key]) return fail(res, 409, 'Aucun chrono en cours pour ce sort.'), true;
+            S.cooldowns[key].endAt += int(body.seconds, -120, 120, 0);
+            break;
+          }
+          default:
+            return fail(res, 400, 'Action invalide (start, clear, add, cosmic ou clearAll).'), true;
+        }
         return done();
       }
 

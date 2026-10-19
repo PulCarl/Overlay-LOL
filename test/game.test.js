@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { computeGame, spellKey, indexFromRunes } = require('../lib/game.js');
+const { computeGame, spellKey, indexFromRunes, spellCooldown, spellHaste } = require('../lib/game.js');
 const { DemoGame } = require('../lib/demo.js');
 
 const demoPlayers = () => {
@@ -53,6 +53,26 @@ test('des sorts ou des runes absents (ancienne version, rediffusion) ne font rie
   assert.deepEqual(byName.Brumelot.spells, [{ key: '', name: 'Saut éclair' }]);
   assert.deepEqual(byName.Oriane.runes, { keystone: null, secondary: null });
   assert.deepEqual(byName.Vexis.spells, []);
+});
+
+test('la recharge d\'un sort dépend du sort, des bottes de lucidité et de la Perspicacité cosmique', () => {
+  const player = (spellKeys, itemIds = []) => ({
+    spells: spellKeys.map((key) => ({ key, name: key })),
+    items: itemIds.map((id) => ({ id })),
+  });
+  const p = player(['SummonerFlash', 'SummonerTeleport']);
+  assert.equal(spellCooldown(p, 0, false), 300);
+  assert.equal(spellCooldown(p, 1, false), 360);
+  assert.equal(spellCooldown(p, 0, true), 254, '18 de haste : 300 × 100 / 118');
+  const boots = player(['SummonerFlash'], [3158, 1001]);
+  assert.equal(spellHaste(boots, false), 12);
+  assert.equal(spellCooldown(boots, 0, false), 268, '12 de haste : 300 × 100 / 112');
+  assert.equal(spellHaste(boots, true), 30);
+  assert.equal(spellCooldown(boots, 0, true), 231, '30 de haste : 300 × 100 / 130');
+  assert.equal(spellCooldown(player(['SummonerSmite']), 0, false), 90);
+  assert.equal(spellCooldown(player(['SortInconnu']), 0, false), 180, 'sort inconnu : durée par défaut');
+  assert.equal(spellCooldown(player(['SummonerFlash']), 1, false), 0, 'pas de second sort');
+  assert.equal(spellCooldown({}, 0, false), 0, 'joueur sans sorts');
 });
 
 test('les images des runes viennent de runesReforged.json de Data Dragon', () => {

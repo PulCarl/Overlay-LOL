@@ -79,6 +79,7 @@ body.preview {
 #feed,
 #banners,
 #sides,
+#mapframe,
 #players,
 #sponsor,
 #hint {
@@ -412,6 +413,31 @@ body.preview {
   height: 19px;
   fill: var(--purple-l);
 }
+/* Icônes officielles du client LoL (voir LOL_ICONS) : elles remplacent le pictogramme dessiné une fois chargées. */
+.chip-ico img,
+.tw-ico img,
+.b-glyph img,
+.b-mark img {
+  display: none;
+}
+.chip-ico.lol svg,
+.tw-ico.lol svg,
+.b-glyph.lol svg,
+.b-mark.lol svg {
+  display: none;
+}
+.chip-ico.lol img,
+.tw-ico.lol img,
+.b-glyph.lol img,
+.b-mark.lol img {
+  display: block;
+}
+.chip-ico.lol img {
+  width: 25px;
+  height: 25px;
+  margin: -3px -2px;
+  filter: drop-shadow(0 0 4px rgba(0, 1, 3, 0.6));
+}
 .chip.gd {
   margin-left: auto;
   background: rgba(242, 193, 78, 0.14);
@@ -581,7 +607,7 @@ body.preview {
 #feed {
   position: absolute;
   left: 24px;
-  top: 492px;
+  top: 742px;
   width: 340px;
   display: flex;
   flex-direction: column;
@@ -674,6 +700,11 @@ body.preview {
   height: 19px;
   fill: var(--c);
 }
+.tw-ico.lol img {
+  width: 24px;
+  height: 24px;
+  margin: -3px -2px;
+}
 .ftag {
   font: 400 12.5px/1 var(--disp);
   letter-spacing: 0.05em;
@@ -756,6 +787,13 @@ body.preview {
   fill: var(--accent);
   filter: drop-shadow(0 0 10px var(--accent));
 }
+.b-glyph.lol img,
+.b-mark.lol img {
+  width: 66px;
+  height: 66px;
+  margin: -4px;
+  filter: drop-shadow(0 0 10px var(--accent));
+}
 .b-diamond {
   display: block;
   width: 30px;
@@ -803,20 +841,22 @@ body.preview {
 }
 .scol {
   position: absolute;
-  top: 132px;
-  width: 256px;
+  top: 0;
+  bottom: 0;
+  width: 258px;
   display: flex;
   flex-direction: column;
+  justify-content: center; /* les cinq lignes sont centrées sur la hauteur de l'écran */
   gap: 6px;
   transform: scale(var(--ui));
 }
 .scol.blue {
   left: 24px;
-  transform-origin: 0 0;
+  transform-origin: 0 50%;
 }
 .scol.red {
   right: 24px;
-  transform-origin: 100% 0;
+  transform-origin: 100% 50%;
 }
 .srow {
   --c: var(--blue);
@@ -863,20 +903,20 @@ body.preview {
 .srow .resp {
   font-size: 21px;
 }
-.s-id {
+.srow .pn {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 3px;
+  font-size: 16px;
+  font-weight: 700;
 }
-.srow .pn {
-  font-size: 15px;
+.srow.dead {
+  opacity: 0.6;
 }
-.srow .kda {
-  font-size: 18px;
+.srow.dead .ico.champ img,
+.srow.dead .ico.champ .ini {
+  filter: grayscale(1) brightness(0.55);
 }
+
 /* Sorts d'invocateur (deux icônes) et runes (rune principale, arbre secondaire) du côté de l'intérieur de l'écran. */
 .s-mini {
   flex: none;
@@ -892,10 +932,30 @@ body.preview {
   justify-content: center;
   gap: 4px;
 }
-.srow .ico.spell,
+.srow .ico.spell {
+  width: 28px;
+  height: 28px;
+}
 .srow .ico.rune {
   width: 26px;
   height: 26px;
+}
+.srow .ico.spell .cdtxt {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: none;
+  place-items: center;
+  background: rgba(0, 1, 3, 0.7);
+  font: 700 11px/1 var(--txt);
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+.srow .ico.spell.cd .cdtxt {
+  display: grid;
+}
+.srow .ico.spell.cd img {
+  filter: grayscale(1) brightness(0.55);
 }
 .srow .ico.spell {
   border-radius: 4px;
@@ -916,14 +976,6 @@ body.preview {
 .srow .ico.rune .ini {
   font-size: 9px;
 }
-.srow.dead {
-  opacity: 0.6;
-}
-.srow.dead .ico.champ img,
-.srow.dead .ico.champ .ini {
-  filter: grayscale(1) brightness(0.55);
-}
-
 /* ------------------------------------------------ tableau des joueurs (échelle) */
 
 #players {
@@ -1976,4 +2028,39 @@ body.preview {
   .banner {
     transform: none;
   }
+}
+
+/* ------------------------------------------------------------ cadre de la minimap */
+
+/* Il entoure la minimap du jeu (en bas à droite). Sa taille se règle dans le panneau (--map). */
+#mapframe {
+  --map: 280px;
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: var(--map);
+  height: var(--map);
+  pointer-events: none;
+  filter: drop-shadow(0 0 10px rgba(158, 66, 237, 0.5));
+}
+#mapframe::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #9e42ed, #4802de 55%, #9e42ed);
+  clip-path: polygon(
+    evenodd,
+    0 26px, 26px 0, 100% 0, 100% 100%, 0 100%, 0 26px,
+    4px 28px, 28px 4px, calc(100% - 4px) 4px, calc(100% - 4px) calc(100% - 4px), 4px calc(100% - 4px), 4px 28px
+  );
+}
+#mapframe::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  background: linear-gradient(135deg, #c590ff, #9e42ed);
+  clip-path: polygon(0 100%, 100% 0, 100% 5px, 5px 100%);
 }

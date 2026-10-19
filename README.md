@@ -22,6 +22,7 @@ Un overlay de diffusion pour OBS, sur le même principe que JotaOverlay pour Roc
   <img src="screenshots/panneau-de-controle.png" alt="Panneau de contrôle LoL" width="48%">
 </p>
 <p align="center">
+  <img src="screenshots/panneau-sorts.png" alt="Chronos des sorts d'invocateur (LoL)" width="48%">
   <img src="screenshots/valorant-panneau.png" alt="Panneau de contrôle VALORANT" width="48%">
 </p>
 
@@ -44,7 +45,8 @@ Un overlay de diffusion pour OBS, sur le même principe que JotaOverlay pour Roc
    - *Si vous diffusez en 1280×720, laissez quand même la source en 1920×1080 : OBS la réduit avec le reste de la scène.*
 3. **Régler le panneau de contrôle**
    - [ ] Onglet **Principal** : noms, tags et logos des équipes, format de la série (BO1, BO3, BO5 ou BO7).
-   - [ ] Onglet **Affichage** : mode **Joueur** (le bas de l'écran reste libre pour la barre des sorts) ou **Spectateur** (tableau des joueurs en bas), et les interrupteurs de chaque élément, dont les champions sur les côtés.
+   - [ ] Onglet **Affichage** : mode **Joueur** (le bas de l'écran reste libre pour la barre des sorts) ou **Spectateur** (tableau des joueurs en bas), et les interrupteurs de chaque élément (champions sur les côtés, cadre de la minimap…).
+   - [ ] Onglet **Sorts** *(facultatif)* : cliquez sur le Saut éclair d'un joueur quand il l'utilise, son compte à rebours s'affiche dans l'overlay.
    - [ ] Chaque changement est enregistré tout de suite, il n'y a pas de bouton « Enregistrer ».
 4. **Picks et bans** *(facultatif, scène dédiée)*
    - [ ] La source `/overlay` les affiche déjà toute seule pendant la sélection des champions.
@@ -84,8 +86,9 @@ Pas de match sous la main ? Dans l'onglet **Affichage**, « Charger le match d'e
 
 - **Barre de score** en haut au centre
   - Plaque centrale : kills de chaque équipe, chrono et jauge de valeur des objets.
-  - De chaque côté : logo, tag, nom et pastilles de série, puis un bandeau avec les tours, inhibiteurs, dragons (losanges colorés selon l'élément, mention « Âme » à 4), hérauts, barons et valeur des objets.
-- **Champions sur les côtés** : une colonne par équipe, la bleue à gauche et la rouge à droite, avec pour chaque joueur le portrait du champion, son niveau, son pseudo, son K/D/A, ses deux sorts d'invocateur (Saut éclair, Embrasement…) et ses runes (rune principale et arbre secondaire). Un joueur mort se grise et son temps de réapparition remplace le niveau. Interrupteur « Champions sur les côtés » dans l'onglet Affichage du panneau.
+  - De chaque côté : logo, tag, nom et pastilles de série, puis un bandeau avec les tours, inhibiteurs, dragons (losanges colorés selon l'élément, mention « Âme » à 4), hérauts, barons et valeur des objets. Les pictogrammes sont les icônes officielles du client LoL (bleues d'un côté, rouges de l'autre).
+- **Champions sur les côtés** : une colonne par équipe, la bleue à gauche et la rouge à droite, centrées sur la hauteur de l'écran. Chaque ligne montre le portrait du champion avec son niveau, le pseudo, les deux sorts d'invocateur (Saut éclair, Embrasement…) avec leur compte à rebours, et les runes (rune principale et arbre secondaire). Un joueur mort se grise et son temps de réapparition remplace le niveau. Interrupteur « Champions sur les côtés » dans l'onglet Affichage du panneau.
+- **Cadre autour de la minimap** en bas à droite : un liseré angulaire aux couleurs de la charte, dont la taille se règle dans le panneau pour épouser la minimap de votre jeu.
 - **Fil d'actions** : kills (tueur → victime, assistances) et tours détruites, en petit, sous la colonne de gauche.
 - **Bandeaux d'objectifs** sous la barre : dragons (volés ou non), Nashor, Héraut, Atakhan, inhibiteurs, premier sang, triple, quadra et pentakill, ace.
 - **Tableau des joueurs** en bas au centre : deux colonnes de 5 lignes alignées par poste, avec champion, niveau, nom, K/D/A, objets et CS, et le temps de réapparition des joueurs morts. Affiché par défaut en mode spectateur.
@@ -115,6 +118,15 @@ Les polices de la charte, **Bruno Ace SC** (titres, chiffres) et **Chakra Petch*
 ### Presets d'équipes
 
 Le bouton 💾 de chaque carte d'équipe enregistre un nom, un tag et un logo (et le sous-titre dans VALORANT). Rechargez-les en un clic avec la liste « Équipe enregistrée », côté bleu ou rouge (à gauche ou à droite dans VALORANT). Entre deux games, **« Échanger les côtés »** échange les deux équipes avec leurs scores (et leurs joueurs dans VALORANT) ; **+**, **−** et **« Remettre à 0 »** corrigent la série à la main.
+
+### Chronos des sorts d'invocateur (à la main)
+
+Le jeu ne dit jamais quand un sort d'invocateur est lancé. Les compte à rebours se lancent donc depuis l'onglet **Sorts** du panneau : cliquez sur le sort d'un joueur au moment où il l'utilise, et son icône se grise avec le temps restant dans la colonne de l'overlay.
+
+- **Durées de base** : Saut éclair 5:00, Embrasement 3:00, Téléportation 6:00, Soins 4:00, Fatigue 3:30, Fantôme 3:30, Barrière 3:00, Purge 3:30, Châtiment 1:30. Elles changent avec les saisons (voir `SPELL_COOLDOWN` dans `lib/game.js`).
+- **Haste des sorts** : les bottes de lucidité sont détectées toutes seules (−12 %) ; cochez « Perspicacité » pour la rune du même nom (−18 %), que le jeu ne permet pas de voir. La durée prévue s'affiche sur chaque bouton avant le clic.
+- **Corrections** : −10 et +10 secondes quand le clic est arrivé trop tôt ou trop tard, ✕ pour arrêter un chrono, « Tout arrêter » pour tous.
+- Les chronos suivent l'heure de la partie (pas l'heure de l'ordinateur) et repartent à zéro à chaque nouvelle partie.
 
 ### Logos personnalisés
 
@@ -265,8 +277,9 @@ Si vous lancez le serveur en cours de partie, l'historique n'est pas rejoué à 
 ### Limites
 
 - **L'or affiché est la valeur des objets**, pas l'or réel : l'API ne donne pas l'or des adversaires.
-- **Pas de points de vie ni de mana** pour les joueurs : l'API locale ne les donne que pour votre propre champion. Elle ne dit pas non plus quand un sort d'invocateur est lancé, donc **pas de chrono de recharge du Saut éclair**. Pas non plus de positions ni de données de la carte.
-- Sans connexion Internet, les icônes de Data Dragon (champions, objets, sorts, runes) sont remplacées par des pastilles avec les initiales.
+- **Pas de points de vie ni de mana** pour les joueurs : l'API locale ne les donne que pour votre propre champion. Elle ne dit pas non plus quand un sort d'invocateur est lancé : le chrono du Saut éclair se lance **à la main** (onglet Sorts). Pas non plus de positions ni de données de la carte.
+- Sans connexion Internet, les icônes de Data Dragon (champions, objets, sorts, runes) sont remplacées par des pastilles avec les initiales, et les icônes officielles des objectifs par des pictogrammes dessinés.
+- Le cadre de la minimap ne suit pas la taille de la minimap du jeu : réglez-le une fois dans l'onglet Affichage.
 - **VALORANT n'est pas automatique** : manches, chrono, crédits et K/D/A sont saisis à la main, car le jeu ne les fournit pas au public. Le chrono n'est pas synchronisé avec celui du jeu : il se lance avec les boutons du panneau. Pas de points de vie, de bouclier ni d'armes, et pas de killfeed.
 
 ---
@@ -290,7 +303,8 @@ Les outils de fabrication (`electron`, `@electron/packager`, `esbuild`, `postjec
 
 ## Crédits
 
-- **Icônes des objectifs** (tour, inhibiteur, dragon, héraut, Nashor, or, épées croisées) : [game-icons.net](https://game-icons.net), licence [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). Icons made by **Lorc** (`white-tower`, `crystal-growth`, `dragon-head`, `beast-eye`, `horned-skull`, `crossed-swords`) and **Delapouite** (`two-coins`). Les tracés sont repris tels quels et seulement recolorés par la feuille de style.
+- **Icônes officielles des objectifs** (tour, inhibiteur, dragon, héraut de la Faille, Nashor) : celles du client League of Legends, propriété de Riot Games, chargées depuis [Community Dragon](https://www.communitydragon.org). Elles ne sont pas incluses dans le dépôt.
+- **Pictogrammes de repli et autres icônes** (tour, inhibiteur, dragon, héraut, Nashor, or, épées croisées), affichés quand les icônes officielles ne chargent pas : [game-icons.net](https://game-icons.net), licence [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). Icons made by **Lorc** (`white-tower`, `crystal-growth`, `dragon-head`, `beast-eye`, `horned-skull`, `crossed-swords`) and **Delapouite** (`two-coins`). Les tracés sont repris tels quels et seulement recolorés par la feuille de style.
 - **Polices** : Bruno Ace SC et Chakra Petch (SIL Open Font License 1.1).
 - **Icônes de champions et d'objets**, et illustrations des champions : Data Dragon, le service public de Riot Games pour les développeurs.
 - **Agents et maps de VALORANT** (noms, portraits, visuels) : [valorant-api.com](https://valorant-api.com), une API communautaire. Les illustrations appartiennent à Riot Games.

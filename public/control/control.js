@@ -172,6 +172,10 @@
       $('scale-out').textContent = `${pct} %`;
     }
     setIfIdle($('sponsor-interval'), cfg.sponsorInterval, 'interval');
+    if (document.activeElement !== $('map-size') && !pending.has('mapsize')) {
+      $('map-size').value = d.mapSize;
+      $('map-out').textContent = `${d.mapSize} px`;
+    }
 
     const g = state.game;
     let hint = '';
@@ -330,8 +334,122 @@
     }
   }
 
+  /* ------------------------------------------------------------ sorts (chronos de recharge) */
+
+  const SPELL_IMG = (v, k) => `https://ddragon.leagueoflegends.com/cdn/${v}/img/spell/${k}.png`;
+  let recvAt = 0;
+  let spellKey = '';
+  let spellRows = [];
+
+  const fmtCd = (sec) => (sec >= 60 ? `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}` : `${sec} s`);
+
+  /* Heure de jeu à cet instant : la dernière lecture, prolongée du temps écoulé depuis (au plus 1,2 s). */
+  function gameNow() {
+    let t = state.game.gameTime;
+    if (state.status === 'ingame') t += Math.min((performance.now() - recvAt) / 1000, 1.2) * (state.clockRate || 1);
+    return t;
+  }
+
+  const cooldown = (body) => api('POST', '/api/cooldown', body).catch(() => {});
+
+  function buildSpellRow(team, p) {
+    const row = el('div', 'cdrow ' + (team === 'ORDER' ? 'blue' : 'red'));
+    const name = el('span', 'cdname');
+    name.append(el('b', '', p.name), el('small', '', p.champion));
+    row.append(name);
+    const cells = [];
+    for (const slot of [0, 1]) {
+      const sp = p.spells[slot];
+      const cell = el('div', 'cdcell');
+      if (!sp) {
+        cell.append(el('span', 'muted', '—'));
+        row.append(cell);
+        continue;
+      }
+      const main = el('button', 'btn small cdmain');
+      main.type = 'button';
+      main.title = `Lancer le chrono de ${sp.name || 'ce sort'} pour ${p.name}`;
+      if (state.ddragon && sp.key) {
+        const img = new Image();
+        img.alt = '';
+        img.onerror = () => img.remove();
+        img.src = SPELL_IMG(state.ddragon, sp.key);
+        main.append(img);
+      }
+      const label = el('span', 'cdlabel', sp.name || sp.key);
+      const out = el('output', '', '');
+      main.append(label, out);
+      main.addEventListener('click', () => cooldown({ team, index: p.index, slot, action: 'start' }));
+      const mk = (text, title, body) => {
+        const b = el('button', 'btn small ghost cdsmall', text);
+        b.type = 'button';
+        b.title = title;
+        b.addEventListener('click', () => cooldown({ team, index: p.index, slot, ...body }));
+        return b;
+      };
+      const minus = mk('−10', 'Retirer 10 secondes', { action: 'add', seconds: -10 });
+      const plus = mk('+10', 'Ajouter 10 secondes', { action: 'add', seconds: 10 });
+      const stop = mk('✕', 'Arrêter ce chrono', { action: 'clear' });
+      cell.append(main, minus, plus, stop);
+      cells.push({ slot, key: `${team}:${p.index}:${slot}`, main, out, extras: [minus, plus, stop] });
+      row.append(cell);
+    }
+    const cosmic = el('label', 'cosmic');
+    const box = el('input');
+    box.type = 'checkbox';
+    box.addEventListener('change', () => cooldown({ team, index: p.index, action: 'cosmic', on: box.checked }));
+    cosmic.append(box, document.createTextNode(' Perspicacité'));
+    cosmic.title = 'Perspicacité cosmique : −18 % de recharge des sorts';
+    row.append(cosmic);
+    spellRows.push({ team, index: p.index, cells, box });
+    return row;
+  }
+
+  function renderSpells() {
+    const g = state.game;
+    $('cd-info').textContent = g ? 'Partie en cours : cliquez sur un sort pour lancer son chrono.' : 'Les chronos sont disponibles pendant une partie.';
+    $('cd-clear-all').disabled = !g;
+    const lists = { ORDER: $('cd-blue'), CHAOS: $('cd-red') };
+    $('cd-title-blue').textContent = cfg.teams.blue.name || 'Équipe bleue';
+    $('cd-title-red').textContent = cfg.teams.red.name || 'Équipe rouge';
+    const key = g ? JSON.stringify([state.gameId, state.ddragon, ...['ORDER', 'CHAOS'].map((t) => g.teams[t].players.map((p) => [p.index, p.name, p.champion, (p.spells || []).map((x) => x.key)]))]) : '';
+    if (key !== spellKey) {
+      spellKey = key;
+      spellRows = [];
+      for (const team of ['ORDER', 'CHAOS']) {
+        lists[team].textContent = '';
+        if (!g) lists[team].append(el('div', 'empty', 'En attente d\'une partie.'));
+        else for (const p of g.teams[team].players) lists[team].append(buildSpellRow(team, p));
+      }
+    }
+    if (g) tickSpells();
+  }
+
+  /* Compte à rebours de chaque sort (ou durée prévue s'il n'est pas lancé), redessiné cinq fois par seconde. */
+  function tickSpells() {
+    if (!state || !state.game) return;
+    const now = gameNow();
+    const cds = state.cooldowns || {};
+    const totals = state.spellTotals || {};
+    for (const r of spellRows) {
+      const who = `${r.team}:${r.index}`;
+      const cosmic = !!(state.cosmic && state.cosmic[who]);
+      if (document.activeElement !== r.box) r.box.checked = cosmic;
+      for (const c of r.cells) {
+        const cd = cds[c.key];
+        const left = cd ? Math.ceil(cd.endAt - now) : 0;
+        const running = left > 0;
+        c.main.classList.toggle('running', running);
+        c.out.textContent = running ? fmtCd(left) : totals[c.key] ? fmtCd(totals[c.key]) : '';
+        for (const b of c.extras) b.hidden = !running;
+      }
+    }
+  }
+  setInterval(tickSpells, 250);
+
   function render(s) {
     state = s;
+    recvAt = performance.now();
     cfg = s.config;
     renderStatus(s);
     renderTeams();
@@ -340,11 +458,12 @@
     renderDraft();
     renderSponsors();
     renderPresets();
+    renderSpells();
   }
 
   /* ------------------------------------------------------------ onglets */
 
-  const TABS = ['main', 'display', 'teams', 'obs'];
+  const TABS = ['main', 'spells', 'display', 'teams', 'obs'];
   function showTab(name) {
     if (!TABS.includes(name)) name = 'main';
     for (const b of qsa('[role=tab]')) b.setAttribute('aria-selected', String(b.dataset.tab === name));
@@ -409,6 +528,11 @@
     $('scale-out').textContent = `${e.target.value} %`;
     debounce('scale', () => patch({ display: { scale: Number(e.target.value) / 100 } }), 200);
   });
+  $('map-size').addEventListener('input', (e) => {
+    $('map-out').textContent = `${e.target.value} px`;
+    debounce('mapsize', () => patch({ display: { mapSize: Number(e.target.value) } }), 200);
+  });
+  $('cd-clear-all').addEventListener('click', () => cooldown({ action: 'clearAll' }));
 
   for (const r of qsa('input[name=draft-mode]')) r.addEventListener('change', () => api('POST', '/api/draft', { mode: r.value }).catch(() => {}));
 

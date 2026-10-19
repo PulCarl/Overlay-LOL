@@ -981,3 +981,35 @@ button:focus-visible,
 .dr-team.red .team-band {
   background: var(--red-band);
 }
+
+/* Lecture automatique des sorts : aperçu de l'écran du jeu avec les cases lues. */
+#auto-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #000;
+  border: 1px solid var(--line);
+}
+#auto-canvas.calibrating {
+  cursor: crosshair;
+  outline: 2px solid #ffd24a;
+}
+.auto-opts {
+  align-items: center;
+  gap: 8px 22px;
+  flex-wrap: wrap;
+}
+.auto-opts input[type='range'] {
+  vertical-align: middle;
+  width: 120px;
+}
+/* La vidéo capturée n'est jamais montrée ; elle doit rester dans la page pour que le navigateur la décode. */
+.auto-video {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 2px;
+  height: 2px;
+  opacity: 0;
+  pointer-events: none;
+}

@@ -150,13 +150,44 @@
 
     <!-- ============================================================ Sorts -->
     <div class="page" id="tab-spells" role="tabpanel" hidden>
+      <section class="card" id="auto-card">
+        <div class="card-head"><h2><span aria-hidden="true">👁️</span> Lecture automatique</h2><em class="badge" id="auto-badge" hidden>En cours</em></div>
+        <p class="hint first">Pour un cast en spectateur : le panneau regarde les sorts d'invocateur que le client du jeu affiche dans les panneaux des joueurs (une icône assombrie veut dire « en recharge ») et lance les chronos tout seul. Partagez la fenêtre de League of Legends en entier (16:9), avec les panneaux des joueurs de chaque côté de l'écran.</p>
+        <div class="row">
+          <button class="btn primary" id="auto-start" type="button">▶ Lire l'écran du jeu</button>
+          <button class="btn" id="auto-stop" type="button" hidden>■ Arrêter la lecture</button>
+        </div>
+        <p class="hint" id="auto-status"></p>
+        <div id="auto-view" hidden>
+          <canvas id="auto-canvas" width="720" height="405"></canvas>
+          <p class="hint" id="auto-help">Vert : sort prêt. Rouge : en recharge. Le nom du champion s'affiche au-dessus de chaque panneau : il doit correspondre au portrait du jeu.</p>
+          <div class="row">
+            <button class="btn small" id="auto-cal-ORDER" type="button" title="Trois clics sur l'aperçu pour placer les icônes du côté gauche">Caler le côté gauche…</button>
+            <button class="btn small" id="auto-cal-CHAOS" type="button" title="Trois clics sur l'aperçu pour placer les icônes du côté droit">Caler le côté droit…</button>
+            <button class="btn small ghost" id="auto-cal-reset" type="button">Positions d'origine</button>
+          </div>
+          <div class="row auto-opts">
+            <label class="inline">Ordre des panneaux
+              <select id="auto-order">
+                <option value="game">Comme dans le jeu</option>
+                <option value="role">Par poste (Top → Support)</option>
+              </select>
+            </label>
+            <label class="inline" title="À partir de quelle part de sa luminance normale une icône est considérée comme en recharge">Sensibilité
+              <input type="range" id="auto-threshold" min="30" max="85" step="5"> <output id="auto-threshold-out"></output>
+            </label>
+            <label class="inline"><input type="checkbox" id="auto-values"> Afficher les mesures</label>
+          </div>
+        </div>
+        <video id="auto-video" class="auto-video" muted playsinline></video>
+      </section>
       <section class="card">
         <div class="card-head">
           <h2><span aria-hidden="true">⏱️</span> Chronos des sorts</h2>
           <button class="btn small ghost" id="cd-clear-all" type="button">Tout arrêter</button>
         </div>
         <p class="hint first" id="cd-info"></p>
-        <p class="hint">Le jeu ne dit pas quand un sort est lancé : cliquez sur le sort au moment où le joueur l'utilise. Le compte à rebours s'affiche sur son icône, dans la colonne du joueur (overlay). La durée tient compte des bottes de lucidité, détectées toutes seules ; cochez « Perspicacité » pour la rune du même nom, que le jeu ne permet pas de voir.</p>
+        <p class="hint">Le jeu ne dit pas quand un sort est lancé. Sans lecture automatique, cliquez sur le sort au moment où le joueur l'utilise ; avec elle, les chronos se lancent tout seuls et ces boutons servent à corriger. Le compte à rebours s'affiche sur l'icône du sort, dans la colonne du joueur (overlay). La durée tient compte des bottes de lucidité, détectées toutes seules, et la lecture retient la vraie durée de chaque sort après son premier lancer ; cochez « Perspicacité » pour la rune du même nom, que le jeu ne permet pas de voir.</p>
       </section>
       <section class="card cd-card blue">
         <div class="card-head"><h2 id="cd-title-blue">Équipe bleue</h2></div>
@@ -324,6 +355,7 @@
   </main>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/control/spellvision.js"></script>
   <script src="/control/control.js"></script>
 </body>
 </html>

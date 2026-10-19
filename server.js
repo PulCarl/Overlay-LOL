@@ -23,6 +23,7 @@ const { DemoGame } = require('./lib/demo');
 const { normalizeDraft, indexFromDdragon, indexFromClientSummary, endedIntoGame } = require('./lib/draft');
 const { LcuClient } = require('./lib/lcu');
 const { Drafter, cleanRoster } = require('./lib/drafter');
+const { SpellWatch, DEFAULT_LAYOUT, DEFAULT_THRESHOLD, cleanLayout, cleanThreshold } = require('./lib/spellwatch');
 const { createShare } = require('./lib/drafter-share');
 const { DemoDraft, DEMO_CHAMPS } = require('./lib/demo-draft');
 
@@ -110,6 +111,9 @@ const DEFAULT_CONFIG = {
   // Drafter : pseudos dans l'ordre des postes (Top, Jungle, Mid, ADC, Support), durée d'un tour, et adresse à partager
   // (vide : l'adresse de cet ordinateur sur le réseau ; à remplir avec l'adresse d'un tunnel pour jouer à distance).
   drafter: { roster: { blue: ['', '', '', '', ''], red: ['', '', '', '', ''] }, turnSeconds: 30, base: '' },
+  // Lecture automatique des sorts sur l'écran du client spectateur : où sont les icônes (fractions de l'image capturée),
+  // l'ordre des panneaux (game : celui du jeu, role : Top à Support) et la sensibilité (voir lib/spellwatch.js).
+  spellsAuto: { layout: DEFAULT_LAYOUT, order: 'game', threshold: DEFAULT_THRESHOLD },
   presets: [],
 };
 
@@ -172,6 +176,14 @@ function applyConfigPatch(cfg, p) {
       const b = str(d.base, 200).replace(/\/+$/, '');
       cfg.drafter.base = /^https?:\/\/[^\s]+$/i.test(b) ? b : '';
     }
+  }
+
+  if (isObj(p.spellsAuto)) {
+    const a = p.spellsAuto;
+    if (a.resetLayout) cfg.spellsAuto.layout = clone(DEFAULT_LAYOUT);
+    if (isObj(a.layout)) cfg.spellsAuto.layout = cleanLayout(a.layout, cfg.spellsAuto.layout);
+    if ('order' in a && ['game', 'role'].includes(a.order)) cfg.spellsAuto.order = a.order;
+    if ('threshold' in a) cfg.spellsAuto.threshold = cleanThreshold(a.threshold, cfg.spellsAuto.threshold);
   }
 
   if (Array.isArray(p.sponsors)) {
@@ -245,6 +257,10 @@ const S = {
   // Chronos de recharge des sorts, lancés à la main : « équipe:joueur:sort » → { endAt (heure de jeu), total }.
   cooldowns: {},
   cosmic: {}, // « équipe:joueur » → Perspicacité cosmique (-18 % de recharge)
+  // Recharges réellement vues à l'écran (lecture automatique) : « équipe:joueur:sort » → secondes ; elles remplacent la durée calculée.
+  learned: {},
+  // Lecture automatique : { at (Date.now) de la dernière image reçue, valid, ready, cooldown, unknown }
+  auto: { at: 0, valid: false, ready: 0, cooldown: 0, unknown: 0 },
   // Sélection des champions (picks et bans)
   draft: null, // sélection en cours, déjà mise en forme
   lastDraft: null, // dernière sélection vue (affichable à la demande)
@@ -350,6 +366,11 @@ function gameClock() {
   return S.game.gameTime + (running ? Math.min((Date.now() - S.gameAt) / 1000, 1.2) * (DEMO ? DEMO_SPEED : 1) : 0);
 }
 
+/* Recharge d'un sort, en secondes : celle qu'on a vue à l'écran pour ce joueur si on la connaît, sinon la durée calculée. */
+function spellTotal(team, p, slot) {
+  return S.learned[`${team}:${p.index}:${slot}`] || spellCooldown(p, slot, !!S.cosmic[`${team}:${p.index}`]);
+}
+
 /* Durée (en secondes) que prendrait chaque sort s'il était lancé maintenant : le panneau l'affiche avant le clic. */
 function spellTotals() {
   const out = {};
@@ -357,11 +378,86 @@ function spellTotals() {
   for (const team of ['ORDER', 'CHAOS']) {
     for (const p of S.game.teams[team].players) {
       for (const slot of [0, 1]) {
-        if (p.spells[slot]) out[`${team}:${p.index}:${slot}`] = spellCooldown(p, slot, !!S.cosmic[`${team}:${p.index}`]);
+        if (p.spells[slot]) out[`${team}:${p.index}:${slot}`] = spellTotal(team, p, slot);
       }
     }
   }
   return out;
+}
+
+/* ------------------------------------------------------------ lecture automatique des sorts */
+
+const spellWatch = new SpellWatch();
+
+/* Où en est la lecture automatique (le panneau envoie une image toutes les demi-secondes tant qu'elle est lancée). */
+function autoInfo() {
+  const a = S.auto;
+  return { active: Date.now() - a.at < 4000, valid: a.valid, ready: a.ready, cooldown: a.cooldown, unknown: a.unknown };
+}
+
+/* Les joueurs de chaque équipe dans l'ordre des panneaux du client spectateur (cinq par côté). */
+function panelRows() {
+  const out = {};
+  for (const team of ['ORDER', 'CHAOS']) {
+    const list = S.game.teams[team].players;
+    out[team] = (config.spellsAuto.order === 'role' ? list : [...list].sort((a, b) => a.index - b.index)).slice(0, 5);
+  }
+  return out;
+}
+
+/*
+ * Une image lue par le panneau : { icons: { 'ORDER:0:0': { l } } } (luminance de chaque icône, voir lib/spellwatch.js).
+ * Un sort qui s'assombrit lance son chrono, un sort qui s'éclaircit l'arrête et apprend sa vraie durée.
+ */
+function readSpellFrame(body) {
+  if (!S.game || S.status !== 'ingame') return { valid: false, reason: 'Aucune partie en cours.' };
+  const rows = panelRows();
+  const spells = {};
+  const dead = new Set();
+  const icons = {};
+  const sent = isObj(body.icons) ? body.icons : {};
+  for (const team of ['ORDER', 'CHAOS']) {
+    rows[team].forEach((p, row) => {
+      if (p.isDead) dead.add(`${team}:${row}`);
+      for (const slot of [0, 1]) {
+        const sp = p.spells[slot];
+        const id = `${team}:${row}:${slot}`;
+        if (!sp) continue;
+        spells[id] = sp.key || sp.name || 'inconnu';
+        const l = isObj(sent[id]) ? Number(sent[id].l) : NaN;
+        if (Number.isFinite(l)) icons[id] = { l: Math.min(1, Math.max(0, l)) };
+      }
+    });
+  }
+  spellWatch.setThreshold(config.spellsAuto.threshold);
+  const r = spellWatch.observe({ icons, spells, dead, clock: gameClock() });
+
+  for (const ev of r.events) {
+    const [team, row, slot] = ev.id.split(':');
+    const p = rows[team][Number(row)];
+    if (!p) continue;
+    const key = `${team}:${p.index}:${slot}`;
+    if (ev.type === 'start') {
+      const total = spellTotal(team, p, Number(slot));
+      S.cooldowns[key] = { endAt: ev.at + total, total, auto: true };
+    } else {
+      delete S.cooldowns[key];
+      // La durée vue à l'écran est la bonne (bottes, runes, haste…) : on s'en sert pour les prochains lancers de ce joueur.
+      const base = spellCooldown({ spells: p.spells, items: [] }, Number(slot), false);
+      if (ev.duration != null && ev.duration >= Math.max(5, base * 0.1) && ev.duration <= base * 1.3) S.learned[key] = Math.round(ev.duration);
+    }
+  }
+
+  const states = Object.values(r.view || {}).map((v) => v.state);
+  const was = S.auto.valid;
+  S.auto = {
+    at: Date.now(),
+    valid: r.valid,
+    ready: states.filter((x) => x === 'ready').length,
+    cooldown: states.filter((x) => x === 'cooldown').length,
+    unknown: states.filter((x) => x === 'unknown').length,
+  };
+  return { valid: r.valid, view: r.view, changed: r.events.length > 0 || was !== r.valid };
 }
 
 function publicState() {
@@ -381,6 +477,7 @@ function publicState() {
     game: live ? S.game : null,
     cooldowns: S.cooldowns,
     cosmic: S.cosmic,
+    autoSpells: autoInfo(),
     spellTotals: live ? spellTotals() : {},
     hasGame: !!S.game,
     last: last ? { gameId: last.gameId, winner: last.winner, flipped: last.flipped, counted: last.counted } : null,
@@ -699,6 +796,8 @@ function onGame(raw) {
     S.endScreenVisible = false;
     S.cooldowns = {};
     S.cosmic = {};
+    S.learned = {};
+    spellWatch.reset();
     log(`Partie détectée : ${game.spectator ? 'mode spectateur' : `mode joueur (${game.activeName || '?'})`}, ${clock(game.gameTime)}.`);
   }
   S.lastGameTime = game.gameTime;
@@ -1106,7 +1205,7 @@ async function handleApi(req, res, pathname) {
             break;
           case 'start': {
             if (![0, 1].includes(slot) || !p.spells[slot]) return fail(res, 400, 'Ce joueur n\'a pas ce sort.'), true;
-            const total = spellCooldown(p, slot, !!S.cosmic[who]);
+            const total = spellTotal(team, p, slot);
             S.cooldowns[key] = { endAt: gameClock() + total, total };
             break;
           }
@@ -1122,6 +1221,13 @@ async function handleApi(req, res, pathname) {
             return fail(res, 400, 'Action invalide (start, clear, add, cosmic ou clearAll).'), true;
         }
         return done();
+      }
+
+      // Une image de l'écran du jeu lue par le panneau (lecture automatique des sorts).
+      case '/api/spells/frame': {
+        const r = readSpellFrame(body);
+        if (r.changed) broadcast();
+        return sendJson(res, 200, { valid: r.valid, view: r.view || {}, reason: r.reason || '' }), true;
       }
 
       case '/api/draft': {

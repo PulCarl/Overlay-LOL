@@ -48,7 +48,7 @@ Un overlay de diffusion pour OBS, sur le même principe que JotaOverlay pour Roc
 3. **Régler le panneau de contrôle**
    - [ ] Onglet **Principal** : noms, tags et logos des équipes, format de la série (BO1, BO3, BO5 ou BO7).
    - [ ] Onglet **Affichage** : mode **Joueur** (le bas de l'écran reste libre pour la barre des sorts) ou **Spectateur** (tableau des joueurs en bas), et les interrupteurs de chaque élément (champions sur les côtés, cadre de la minimap…).
-   - [ ] Onglet **Sorts** *(facultatif)* : cliquez sur le Saut éclair d'un joueur quand il l'utilise, son compte à rebours s'affiche dans l'overlay.
+   - [ ] Onglet **Sorts** *(facultatif)* : en spectateur, la **lecture automatique** lance les chronos toute seule (voir « Chronos des sorts : lecture automatique »). Sinon, cliquez sur le Saut éclair d'un joueur quand il l'utilise, son compte à rebours s'affiche dans l'overlay.
    - [ ] Chaque changement est enregistré tout de suite, il n'y a pas de bouton « Enregistrer ».
 4. **Picks et bans** *(facultatif, scène dédiée)*
    - [ ] La source `/overlay` les affiche déjà toute seule pendant la sélection des champions.
@@ -92,6 +92,7 @@ Pas de match sous la main ? Dans l'onglet **Affichage**, « Charger le match d'e
   - Plaque centrale : kills de chaque équipe, chrono et jauge de valeur des objets.
   - De chaque côté : logo, tag, nom et pastilles de série, puis un bandeau avec les tours, inhibiteurs, dragons (losanges colorés selon l'élément, mention « Âme » à 4), hérauts, barons et valeur des objets. Les pictogrammes sont les icônes officielles du client LoL (bleues d'un côté, rouges de l'autre).
 - **Champions sur les côtés** : une colonne par équipe, la bleue à gauche et la rouge à droite, centrées sur la hauteur de l'écran. Chaque ligne montre le portrait du champion avec son niveau, les deux sorts d'invocateur (Saut éclair, Embrasement…) avec leur compte à rebours, et les runes (rune principale et arbre secondaire). Un joueur mort se grise et son temps de réapparition remplace le niveau. Interrupteur « Champions sur les côtés » dans l'onglet Affichage du panneau.
+- **Chronos des sorts automatiques** (en spectateur) : le panneau lit à l'écran les icônes de sorts assombries du client et lance les compte à rebours tout seul, sans aucun clic.
 - **Cadre autour de la minimap** en bas à droite : un liseré angulaire aux couleurs de la charte, dont la taille se règle dans le panneau pour épouser la minimap de votre jeu.
 - **Fil d'actions** : kills (tueur → victime) et tours détruites, en petit, sous la colonne de gauche.
 - **Bandeaux d'objectifs** sous la barre : dragons (volés ou non), Nashor, Héraut, Atakhan, inhibiteurs, premier sang, triple, quadra et pentakill, ace.
@@ -125,9 +126,30 @@ Les polices de la charte, **Bruno Ace SC** (titres, chiffres) et **Chakra Petch*
 
 Le bouton 💾 de chaque carte d'équipe enregistre un nom, un tag et un logo (et le sous-titre dans VALORANT). Rechargez-les en un clic avec la liste « Équipe enregistrée », côté bleu ou rouge (à gauche ou à droite dans VALORANT). Entre deux games, **« Échanger les côtés »** échange les deux équipes avec leurs scores (et leurs joueurs dans VALORANT) ; **+**, **−** et **« Remettre à 0 »** corrigent la série à la main.
 
+### Chronos des sorts : lecture automatique (spectateur)
+
+Le jeu ne dit jamais quand un sort d'invocateur est lancé, mais le **client spectateur l'affiche à l'écran** : dans les panneaux des joueurs, de chaque côté, l'icône d'un sort en recharge est nettement assombrie. Le panneau de contrôle regarde ces icônes et lance les chronos tout seul, sans aucun clic.
+
+1. Lancez la partie en spectateur, avec l'interface standard du client (les panneaux des joueurs sur les côtés de l'écran).
+2. Onglet **Sorts → Lecture automatique → Lire l'écran du jeu**. Dans l'application, la fenêtre de League of Legends est partagée automatiquement (à défaut, le premier écran) ; dans un navigateur, c'est lui qui propose la fenêtre à partager.
+3. Sur l'aperçu, vérifiez que les cases (vertes : sort prêt, rouges : en recharge) tombent bien sur les icônes de sorts, et que le nom du champion affiché au-dessus de chaque panneau correspond au portrait du jeu.
+   - Cases décalées : **Caler le côté gauche** puis **le côté droit** (trois clics sur l'aperçu : le premier sort du premier joueur, son second sort, le premier sort du cinquième joueur). Les positions sont gardées d'une partie à l'autre.
+   - Champions dans le mauvais ordre : « Ordre des panneaux » → **Par poste**.
+4. C'est tout : quand un sort s'assombrit, son chrono démarre ; quand l'icône redevient claire, il s'arrête. La première fois, la durée vient du tableau des sorts (bottes de lucidité comprises) ; après le premier lancer d'un joueur, elle est remplacée par la durée **vue à l'écran** (Perspicacité, haste…), donc plus besoin de cocher « Perspicacité ».
+
+Ce que la lecture fait, et ne fait pas :
+
+- Elle ne lit pas le chiffre du compte à rebours affiché par le jeu : elle voit si l'icône est sombre ou claire. Le temps restant vient de la durée du sort.
+- Elle ignore les joueurs morts (leur panneau est grisé en entier) et les images où l'interface a disparu (beaucoup de sorts qui s'assombrissent d'un coup). Un sort déjà en recharge quand on lance la lecture n'a pas de chrono : on ne sait pas depuis quand.
+- **Sensibilité** : à partir de quelle part de sa luminance normale une icône compte comme « en recharge » (60 % par défaut). « Afficher les mesures » montre la mesure de chaque icône sur l'aperçu : 1,00 est normal, environ 0,35 est assombri.
+- Il faut une image 16:9 de toute la fenêtre du jeu : le jeu en fenêtre sans bordure, pas réduit dans la barre des tâches (une fenêtre réduite donne une image noire). En plein écran exclusif, la capture peut être noire.
+- **Spectateur uniquement** : en mode joueur, le jeu n'affiche pas les compte à rebours de l'équipe adverse, il n'y a rien à lire.
+- Les positions par défaut et le seuil ont été réglés sur une capture du client spectateur (deux Châtiments en recharge bien repérés, dix-huit icônes prêtes) et vérifiés sur des flux d'écran simulés, pas encore sur une partie en direct : si les cases sont décalées chez vous, calez-les (étape 3).
+- Les boutons de l'onglet restent là pour corriger un chrono à la main.
+
 ### Chronos des sorts d'invocateur (à la main)
 
-Le jeu ne dit jamais quand un sort d'invocateur est lancé. Les compte à rebours se lancent donc depuis l'onglet **Sorts** du panneau : cliquez sur le sort d'un joueur au moment où il l'utilise, et son icône se grise avec le temps restant dans la colonne de l'overlay.
+Sans la lecture automatique (par exemple en mode joueur), les compte à rebours se lancent depuis l'onglet **Sorts** du panneau : cliquez sur le sort d'un joueur au moment où il l'utilise, et son icône se grise avec le temps restant dans la colonne de l'overlay.
 
 - **Durées de base** : Saut éclair 5:00, Embrasement 3:00, Téléportation 6:00, Soins 4:00, Fatigue 3:30, Fantôme 3:30, Barrière 3:00, Purge 3:30, Châtiment 1:30. Elles changent avec les saisons (voir `SPELL_COOLDOWN` dans `lib/game.js`).
 - **Haste des sorts** : les bottes de lucidité sont détectées toutes seules (−12 %) ; cochez « Perspicacité » pour la rune du même nom (−18 %), que le jeu ne permet pas de voir. La durée prévue s'affiche sur chaque bouton avant le clic.
@@ -241,6 +263,7 @@ Dans `app/games.js`, ajoutez une entrée `status: 'ready'` avec une fonction `st
 - `lib/lcu.js` : lecture du client LoL (port et mot de passe locaux).
 - `lib/drafter.js` : le moteur du drafter (ordre des tours, champions disponibles, chrono, annulation), sans réseau ni horloge, présenté à l'overlay comme une session du client.
 - `lib/drafter-share.js` : le serveur de partage du drafter (liens à jetons, pages des joueurs, flux en direct).
+- `lib/spellwatch.js` : la lecture automatique des sorts : où sont les icônes, et quand un sort est en recharge ou prêt (sans réseau ni horloge).
 - `lib/demo.js` et `lib/demo-draft.js` : simulateurs de partie et de sélection pour le mode démo.
 
 ### Noyau du système : VALORANT
@@ -252,6 +275,7 @@ Dans `app/games.js`, ajoutez une entrée `status: 'ready'` avec une fonction `st
 ### Interfaces
 - `public/overlay/` et `public/control/` : l'overlay pour OBS et le panneau de contrôle de LoL.
 - `public/drafter/` : la page que les joueurs ouvrent pour leurs bans et leurs picks (servie par le serveur de partage, pas par le panneau).
+- `public/control/spellvision.js` : la lecture de l'écran pour les sorts (mesure de la luminance des icônes, calage, aperçu).
 - `public/valorant/overlay/` et `public/valorant/control/` : ceux de VALORANT (le panneau reprend la feuille de style de celui de LoL).
 - `public/shared/` : polices de la charte (licence OFL).
 - `start.bat`, `start-demo.bat`, `start-valorant.bat` : lancement sans l'application, avec Node.js.
@@ -261,6 +285,7 @@ Dans `app/games.js`, ajoutez une entrée `status: 'ready'` avec une fonction `st
 - `app/games.js` : la liste des jeux (LoL et VALORANT prêts) : c'est ici qu'on en ajoute un.
 - `app/launcher/` : l'écran de choix du jeu.
 - `app/preload.js` : le petit pont entre les pages et l'application (choisir un jeu, revenir).
+- `app/capture.js` : quelle fenêtre partager quand le panneau demande à lire l'écran (la partie, sinon le client, sinon le premier écran).
 
 ### Ressources et persistance
 - `data/` : configuration, logos et journal (créé au premier lancement, à côté du `.exe` pour les versions fabriquées) ; `data/valorant/` pour VALORANT. Il n'est jamais envoyé sur GitHub.
@@ -287,6 +312,8 @@ https://127.0.0.1:2999/liveclientdata/allgamedata
 
 Le certificat du jeu est auto-signé : il n'est ignoré que pour cette adresse locale. Pendant la sélection des champions, il lit le client LoL sur `/lol-champ-select/v1/session`, avec le port et le mot de passe du fichier `lockfile`. Pour développeurs : `GET /api/state` renvoie l'état complet, `GET /events` le diffuse en Server-Sent Events, et `GET /api/draft/raw` montre la réponse brute du client pendant une sélection.
 
+La lecture automatique des sorts envoie ses images à `POST /api/spells/frame` (la luminance des vingt icônes, toutes les demi-secondes, depuis le panneau) ; le serveur en tire les chronos de `cooldowns`.
+
 Le drafter ajoute `GET /api/drafter` (les liens, réservés au panneau) et `POST /api/drafter` (`create`, `start`, `pause`, `resume`, `undo`, `skip`, `reset`, `close`). Les pages des joueurs parlent au serveur de partage (port 3002) : `/d/<jeton>` (la page), `/d/<jeton>/events` (l'état en direct), `/d/<jeton>/hover` et `/d/<jeton>/lock` (survoler et verrouiller un champion, selon le rôle du jeton).
 
 VALORANT n'a pas de source de données en jeu : son serveur (port 3001) ne reçoit que ce que fait le panneau. Il propose les mêmes `GET /api/state` et `GET /events`, plus `POST /api/match` (modifier les noms, scores, joueurs, maps…) et `POST /api/action` (manche gagnée, fin de map, chrono, annuler…). Comme pour LoL, ces routes n'acceptent que du JSON envoyé par une page servie par le serveur lui-même.
@@ -309,6 +336,8 @@ Si vous lancez le serveur en cours de partie, l'historique n'est pas rejoué à 
 - **L'overlay est vide dans OBS** : vérifiez l'adresse (`/overlay`, sans `?preview=1`), la taille 1920×1080 et que le serveur tourne. L'overlay n'affiche rien tant qu'aucune partie n'est en cours : testez avec `start-demo.bat`. Le bouton d'actualisation du cache dans les propriétés de la source recharge la page.
 - **L'application ne démarre pas ou se ferme tout de suite** : regardez `data/overlay.log` (à côté de `Overlay-LoL.exe`).
 - **Remettre les réglages à zéro** : bouton « Tout réinitialiser » du panneau. Pour tout effacer, y compris presets et logos, arrêtez le programme et supprimez le dossier `data/`.
+- **Lecture automatique : « Les panneaux des joueurs ne sont pas lus »** : les cases ne tombent pas sur les icônes, ou l'interface du client n'est pas à l'écran. Regardez l'aperçu : si l'image est noire, la fenêtre du jeu est réduite ou en plein écran exclusif ; si elle est bonne mais décalée, utilisez « Caler… ». Cochez « Afficher les mesures » : une icône prête doit être autour de 1,00.
+- **Lecture automatique : un sort s'arrête trop tôt ou ne démarre pas** : réglez la « Sensibilité » (plus haut : plus sensible). Si une icône est naturellement très sombre, sa mesure peut s'approcher du seuil.
 - **Drafter : « Le port 3002 est déjà utilisé »** : changez de port avec `set DRAFTER_PORT=3003` puis relancez. Si les joueurs n'arrivent pas sur leur lien, vérifiez qu'ils sont sur le même réseau (sinon, ouvrez un tunnel, voir « Drafter »), le pare-feu de Windows et l'adresse du champ « Adresse à partager ».
 - **VALORANT : « Le port 3001 est déjà utilisé »** : changez de port avec `set VALORANT_PORT=3002` puis relancez (pensez à changer l'adresse dans OBS).
 - **VALORANT : les portraits des agents ne s'affichent pas** : ils sont chargés depuis valorant-api.com, il faut une connexion Internet. Sans elle, des pastilles avec les initiales les remplacent ; le reste de l'overlay fonctionne.
@@ -318,9 +347,10 @@ Si vous lancez le serveur en cours de partie, l'historique n'est pas rejoué à 
 ### Limites
 
 - **L'or affiché est la valeur des objets**, pas l'or réel : l'API ne donne pas l'or des adversaires.
-- **Pas de points de vie ni de mana** pour les joueurs : l'API locale ne les donne que pour votre propre champion. Elle ne dit pas non plus quand un sort d'invocateur est lancé : le chrono du Saut éclair se lance **à la main** (onglet Sorts). Pas non plus de positions ni de données de la carte.
+- **Pas de points de vie ni de mana** pour les joueurs : l'API locale ne les donne que pour votre propre champion. Elle ne dit pas non plus quand un sort d'invocateur est lancé : en spectateur, le panneau le lit à l'écran (lecture automatique) ; en joueur, le chrono du Saut éclair se lance **à la main** (onglet Sorts). Pas non plus de positions ni de données de la carte.
 - Sans connexion Internet, les icônes de Data Dragon (champions, objets, sorts, runes) sont remplacées par des pastilles avec les initiales, et les icônes officielles des objectifs par des pictogrammes dessinés.
 - Le cadre de la minimap ne suit pas la taille de la minimap du jeu : réglez-le une fois dans l'onglet Affichage.
+- **Lecture automatique des sorts** : elle repose sur l'aspect de l'interface du client spectateur (icône assombrie = sort en recharge) : un changement de cette interface demandera de recaler les positions, voire d'ajuster la sensibilité. Elle ne voit que « sombre » ou « clair », jamais le temps restant affiché par le jeu.
 - **Drafter** : un seul draft à la fois, gardé en mémoire (il disparaît si le programme s'arrête). Il suit l'ordre standard de 20 tours, sans autre format pour l'instant. Les joueurs n'ont pas de mot de passe : celui qui a un lien peut jouer pour son équipe. L'accès à distance par un tunnel n'a pas été essayé.
 - **VALORANT n'est pas automatique** : manches, chrono, crédits et K/D/A sont saisis à la main, car le jeu ne les fournit pas au public. Le chrono n'est pas synchronisé avec celui du jeu : il se lance avec les boutons du panneau. Pas de points de vie, de bouclier ni d'armes, et pas de killfeed.
 

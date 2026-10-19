@@ -6,11 +6,12 @@
  * au lieu d'un onglet de navigateur.
  */
 
-const { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, screen, shell } = require('electron');
+const { app, BrowserWindow, Menu, desktopCapturer, dialog, ipcMain, nativeTheme, screen, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const games = require('./games.js');
+const { pickCaptureSource } = require('./capture.js');
 
 const LAUNCHER_FILE = path.join(__dirname, 'launcher', 'index.html');
 const LAUNCHER_URL = pathToFileURL(LAUNCHER_FILE).href;
@@ -164,11 +165,35 @@ function createWindow() {
       sandbox: true,
       nodeIntegration: false,
       spellcheck: false,
+      // Le jeu passe devant cette fenêtre : sans ça, la lecture de l'écran ralentirait dès qu'elle est cachée.
+      backgroundThrottling: false,
       preload: path.join(__dirname, 'preload.js'),
     },
   });
   win.setMinimumSize(LAUNCHER_SIZE.width, LAUNCHER_SIZE.height);
   win.center();
+
+  // Lecture automatique des sorts : le panneau demande à capturer l'écran. Pas de boîte de dialogue dans l'application :
+  // on partage la fenêtre du jeu (voir capture.js), et seulement à la page du panneau, jamais à l'écran de choix.
+  win.webContents.session.setDisplayMediaRequestHandler(
+    (request, callback) => {
+      let from = '';
+      try {
+        from = new URL(request.securityOrigin).origin;
+      } catch (_) {
+        /* origine illisible : refusée plus bas */
+      }
+      if (!origin || from !== origin) return callback(null);
+      desktopCapturer
+        .getSources({ types: ['window', 'screen'], thumbnailSize: { width: 0, height: 0 } })
+        .then((sources) => {
+          const source = pickCaptureSource(sources);
+          callback(source ? { video: source } : null);
+        })
+        .catch(() => callback(null));
+    },
+    { useSystemPicker: false }
+  );
 
   win.once('ready-to-show', () => win.show());
   win.on('page-title-updated', (e) => e.preventDefault());

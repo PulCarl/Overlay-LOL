@@ -407,7 +407,12 @@
 
   function renderSpells() {
     const g = state.game;
-    $('cd-info').textContent = g ? 'Partie en cours : cliquez sur un sort pour lancer son chrono.' : 'Les chronos sont disponibles pendant une partie.';
+    const reading = state.autoSpells && state.autoSpells.active;
+    $('cd-info').textContent = !g
+      ? 'Les chronos sont disponibles pendant une partie.'
+      : reading
+        ? 'Partie en cours : la lecture automatique lance les chronos. Ces boutons servent à corriger.'
+        : 'Partie en cours : cliquez sur un sort pour lancer son chrono.';
     $('cd-clear-all').disabled = !g;
     const lists = { ORDER: $('cd-blue'), CHAOS: $('cd-red') };
     $('cd-title-blue').textContent = cfg.teams.blue.name || 'Équipe bleue';
@@ -446,6 +451,178 @@
     }
   }
   setInterval(tickSpells, 250);
+
+  /* ------------------------------------------------------------ lecture automatique des sorts */
+
+  // On capture la fenêtre du jeu, on mesure la luminance des vingt icônes de sorts (spellvision.js) et on l'envoie au
+  // serveur toutes les demi-secondes ; c'est lui qui décide quels sorts sont en recharge (lib/spellwatch.js).
+  const AUTO_MS = 500;
+  const CAL_HELP = [
+    'Calage 1 sur 3 : cliquez au centre du premier sort (celui du haut) du joueur du haut.',
+    'Calage 2 sur 3 : cliquez au centre du second sort du même joueur.',
+    'Calage 3 sur 3 : cliquez au centre du premier sort du joueur du bas (le cinquième).',
+  ];
+  const auto = { stream: null, timer: 0, busy: false, view: {}, valid: null, counts: null, cal: null, grab: null, ctx: null, w: 0, h: 0 };
+
+  function autoStatusText() {
+    if (!auto.stream) {
+      return state && state.autoSpells && state.autoSpells.active
+        ? "Une autre page du panneau lit déjà l'écran."
+        : "Lecture arrêtée. Cliquez sur « Lire l'écran du jeu » et choisissez la fenêtre de League of Legends.";
+    }
+    if (auto.cal) return CAL_HELP[auto.cal.pts.length];
+    if (!state || state.status !== 'ingame') return "Lecture prête : elle démarre avec la partie. En attendant, vérifiez le cadrage sur l'aperçu.";
+    if (auto.valid === false) return 'Les panneaux des joueurs ne sont pas lus : partagez bien toute la fenêtre du jeu, avec les panneaux affichés, ou calez les positions.';
+    if (!auto.counts) return 'Lecture en cours…';
+    const c = auto.counts;
+    return `Lecture en cours : ${c.ready} sorts prêts, ${c.cooldown} en recharge${c.unknown ? `, ${c.unknown} pas encore lus` : ''}.`;
+  }
+
+  function drawAutoPreview() {
+    if (!auto.grab || !cfg || !cfg.spellsAuto) return;
+    const canvas = $('auto-canvas');
+    const cw = 720;
+    const ch = Math.round((cw * auto.h) / auto.w);
+    if (canvas.width !== cw || canvas.height !== ch) {
+      canvas.width = cw;
+      canvas.height = ch;
+    }
+    const g = canvas.getContext('2d');
+    g.drawImage(auto.grab, 0, 0, cw, ch);
+    SpellVision.draw(g, cw, ch, cfg.spellsAuto.layout, {
+      view: auto.view,
+      valid: auto.valid,
+      rows: SpellVision.panelRows(state && state.game, cfg.spellsAuto.order),
+      values: $('auto-values').checked,
+      points: auto.cal ? auto.cal.pts : [],
+    });
+  }
+
+  function renderAuto() {
+    const running = !!auto.stream;
+    $('auto-start').hidden = running;
+    $('auto-stop').hidden = !running;
+    $('auto-badge').hidden = !running;
+    $('auto-view').hidden = !running;
+    if (cfg && cfg.spellsAuto) {
+      const a = cfg.spellsAuto;
+      if (document.activeElement !== $('auto-order')) $('auto-order').value = a.order;
+      const pct = Math.round(a.threshold * 100);
+      if (!pending.has('auto-threshold') && document.activeElement !== $('auto-threshold')) $('auto-threshold').value = pct;
+      $('auto-threshold-out').textContent = (pending.has('auto-threshold') ? Number($('auto-threshold').value) : pct) + ' %';
+    }
+    $('auto-status').textContent = autoStatusText();
+  }
+
+  async function autoTick() {
+    const video = $('auto-video');
+    if (!auto.stream || auto.busy || !video.videoWidth || !cfg || !cfg.spellsAuto) return;
+    auto.busy = true;
+    try {
+      const k = Math.min(1, 1920 / video.videoWidth); // pas la peine de lire une image de 4K : les positions sont des fractions
+      const w = Math.round(video.videoWidth * k);
+      const h = Math.round(video.videoHeight * k);
+      if (!auto.grab) auto.grab = document.createElement('canvas');
+      if (auto.grab.width !== w || auto.grab.height !== h) {
+        auto.grab.width = w;
+        auto.grab.height = h;
+        auto.ctx = auto.grab.getContext('2d', { willReadFrequently: true });
+      }
+      auto.w = w;
+      auto.h = h;
+      auto.ctx.drawImage(video, 0, 0, w, h);
+      // Pendant le calage, on n'envoie rien : les positions changent sous les pieds du serveur.
+      if (state && state.status === 'ingame' && !auto.cal) {
+        const icons = SpellVision.sample(auto.ctx, cfg.spellsAuto.layout, w, h);
+        const res = await fetch('/api/spells/frame', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ icons }) });
+        const json = res.ok ? await res.json().catch(() => null) : null;
+        if (json) {
+          auto.view = json.view || {};
+          auto.valid = json.valid;
+          const states = Object.values(auto.view).map((v) => v.state);
+          auto.counts = { ready: states.filter((x) => x === 'ready').length, cooldown: states.filter((x) => x === 'cooldown').length, unknown: states.filter((x) => x === 'unknown').length };
+        }
+      }
+      drawAutoPreview();
+      $('auto-status').textContent = autoStatusText();
+    } catch (_) {
+      /* une image ratée n'a pas d'importance : la suivante arrive dans une demi-seconde */
+    } finally {
+      auto.busy = false;
+    }
+  }
+
+  async function autoStart() {
+    if (auto.stream) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) return toast("Ce navigateur ne sait pas capturer l'écran.");
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 5, max: 15 } }, audio: false });
+    } catch (e) {
+      return toast(e && e.name === 'NotAllowedError' ? 'Capture annulée ou refusée.' : "Capture de l'écran impossible.");
+    }
+    const video = $('auto-video');
+    video.srcObject = stream;
+    try {
+      await video.play();
+    } catch (_) {
+      /* la lecture démarre dès que des images arrivent */
+    }
+    stream.getVideoTracks()[0].addEventListener('ended', autoStop);
+    Object.assign(auto, { stream, view: {}, valid: null, counts: null, cal: null });
+    auto.timer = setInterval(autoTick, AUTO_MS);
+    renderAuto();
+    autoTick();
+  }
+
+  function autoStop() {
+    clearInterval(auto.timer);
+    auto.timer = 0;
+    if (auto.stream) for (const t of auto.stream.getTracks()) t.stop();
+    auto.stream = null;
+    auto.cal = null;
+    $('auto-video').srcObject = null;
+    $('auto-canvas').classList.remove('calibrating');
+    renderAuto();
+  }
+
+  function autoCalibrate(team) {
+    auto.cal = { team, pts: [] };
+    $('auto-canvas').classList.add('calibrating');
+    drawAutoPreview();
+    $('auto-status').textContent = autoStatusText();
+  }
+
+  $('auto-start').addEventListener('click', autoStart);
+  $('auto-stop').addEventListener('click', autoStop);
+  $('auto-cal-ORDER').addEventListener('click', () => autoCalibrate('ORDER'));
+  $('auto-cal-CHAOS').addEventListener('click', () => autoCalibrate('CHAOS'));
+  $('auto-cal-reset').addEventListener('click', () => patch({ spellsAuto: { resetLayout: true } }));
+  $('auto-order').addEventListener('change', (e) => patch({ spellsAuto: { order: e.target.value } }));
+  $('auto-threshold').addEventListener('input', (e) => {
+    $('auto-threshold-out').textContent = e.target.value + ' %';
+    debounce('auto-threshold', () => patch({ spellsAuto: { threshold: Number(e.target.value) / 100 } }));
+  });
+  $('auto-values').addEventListener('change', drawAutoPreview);
+  $('auto-canvas').addEventListener('click', (e) => {
+    if (!auto.cal) return;
+    const b = e.currentTarget.getBoundingClientRect();
+    auto.cal.pts.push({ x: (e.clientX - b.left) / b.width, y: (e.clientY - b.top) / b.height });
+    if (auto.cal.pts.length < 3) {
+      drawAutoPreview();
+      $('auto-status').textContent = autoStatusText();
+      return;
+    }
+    const { team, pts } = auto.cal;
+    const side = SpellVision.layoutFromClicks(pts, auto.w, auto.h);
+    auto.cal = null;
+    $('auto-canvas').classList.remove('calibrating');
+    if (side) patch({ spellsAuto: { layout: { [team]: side } } });
+    else toast('Ces trois clics ne sont pas dans le bon ordre : recommencez.');
+    drawAutoPreview();
+    $('auto-status').textContent = autoStatusText();
+  });
+  window.addEventListener('pagehide', autoStop);
 
   /* ------------------------------------------------------------ drafter */
 
@@ -589,6 +766,7 @@
     renderSponsors();
     renderPresets();
     renderSpells();
+    renderAuto();
     renderDrafter();
   }
 

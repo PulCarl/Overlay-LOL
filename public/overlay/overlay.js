@@ -49,6 +49,11 @@
     // k : chemin donné par /api/runes (perk-images/Styles/…), sans version.
     rune: (v, k) => `https://ddragon.leagueoflegends.com/cdn/img/${k}`,
   };
+  /*
+   * Icônes des objectifs : celles du tableau de fin de partie du client LoL, en bleu (-100) ou en rouge (-200),
+   * servies par Community Dragon. Si elles ne chargent pas, le pictogramme dessiné (SVG) reste affiché.
+   */
+  const LOL_ICONS = 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/';
   const loadingArt = (k) => `https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${k}_0.jpg`;
 
   /* ------------------------------------------------------------ utilitaires */
@@ -173,9 +178,24 @@
   const bar = $('scorebar');
   const sb = {};
 
-  function chip(cls, svg, title) {
+  /* Pictogramme d'objectif : l'icône officielle (kind : dragon, baron, herald, inhibitor, tower) par-dessus le SVG de repli. */
+  function objIcon(kind, side, svg, cls) {
+    const box = html('span', cls, svg || '');
+    if (!kind) return box;
+    const img = new Image();
+    img.alt = '';
+    img.decoding = 'async';
+    img.onload = () => box.classList.add('lol');
+    img.onerror = () => img.remove();
+    img.src = `${LOL_ICONS}${kind}-${side === 'CHAOS' ? 200 : 100}.png`;
+    box.append(img);
+    if (img.complete && img.naturalWidth) box.classList.add('lol');
+    return box;
+  }
+
+  function chip(cls, svg, title, kind, side) {
     const c = el('span', 'chip ' + cls);
-    if (svg) c.append(html('span', 'chip-ico', svg));
+    if (svg) c.append(objIcon(kind, side, svg, 'chip-ico'));
     const n = el('b', '', '0');
     c.append(n);
     c.title = title;
@@ -197,14 +217,15 @@
     top.append(logo, ident);
 
     const chips = el('div', 'sb-chips');
-    const tw = chip('tw', SVG.tower, 'Tours détruites');
-    const ih = chip('ih', SVG.inhib, 'Inhibiteurs détruits');
+    const side = cls === 'red' ? 'CHAOS' : 'ORDER';
+    const tw = chip('tw', SVG.tower, 'Tours détruites', 'tower', side);
+    const ih = chip('ih', SVG.inhib, 'Inhibiteurs détruits', 'inhibitor', side);
     // Dragons : tête de dragon et nombre, suivis d'un losange coloré par dragon pris (la couleur donne le type).
-    const dr = chip('drc', SVG.dragon, 'Dragons');
+    const dr = chip('drc', SVG.dragon, 'Dragons', 'dragon', side);
     const dragons = el('span', 'dr-list');
     dr.root.append(dragons);
-    const hr = chip('hr', SVG.herald, 'Hérauts de la Faille');
-    const bn = chip('bn', SVG.baron, 'Barons Nashor');
+    const hr = chip('hr', SVG.herald, 'Hérauts de la Faille', 'herald', side);
+    const bn = chip('bn', SVG.baron, 'Barons Nashor', 'baron', side);
     const gd = chip('gd', SVG.coin, 'Valeur des objets');
     chips.append(tw.root, ih.root, dr.root, hr.root, bn.root, gd.root);
 
@@ -303,14 +324,19 @@
     updateClock();
   }
 
-  function updateClock() {
-    if (!S || !S.game) return;
+  /* Heure de jeu à cet instant : la dernière lecture, prolongée du temps écoulé depuis (au plus 1,2 s). */
+  function gameNow() {
     let t = S.game.gameTime;
     if (S.status === 'ingame') {
       const elapsed = Math.min((performance.now() - recvAt) / 1000, 1.2);
       t += elapsed * (S.clockRate || 1);
     }
-    setDigits(sb.timer, mmss(t));
+    return t;
+  }
+
+  function updateClock() {
+    if (!S || !S.game) return;
+    setDigits(sb.timer, mmss(gameNow()));
   }
   setInterval(updateClock, 200);
 
@@ -345,7 +371,7 @@
       row.append(el('span', 'fn victim', v.name || '?'), actorIcon(v, v.team || victimSide));
       if (ev.assists > 0) row.append(el('span', 'assist', '+' + ev.assists));
     } else {
-      row.append(html('span', 'tw-ico', SVG.tower));
+      row.append(objIcon('tower', side, SVG.tower, 'tw-ico'));
       const t = teamOf(side);
       row.append(el('span', 'fn', 'Tour détruite'), el('span', 'ftag', t.tag || teamNameOf(side)));
     }
@@ -375,16 +401,16 @@
     switch (ev.kind) {
       case 'dragon': {
         const d = DRAGONS[ev.dragon] || DRAGONS.unknown;
-        return { title: d.name, sub, accent: d.color, flag: ev.stolen ? 'Volé !' : '', glyph: SVG.dragon };
+        return { title: d.name, sub, accent: d.color, flag: ev.stolen ? 'Volé !' : '', glyph: SVG.dragon, kind: 'dragon' };
       }
       case 'baron':
-        return { title: 'Nashor', sub, accent: teamAccent, flag: ev.stolen ? 'Volé !' : '', glyph: SVG.baron };
+        return { title: 'Nashor', sub, accent: teamAccent, flag: ev.stolen ? 'Volé !' : '', glyph: SVG.baron, kind: 'baron' };
       case 'herald':
-        return { title: 'Héraut de la Faille', sub, accent: teamAccent, flag: ev.stolen ? 'Volé !' : '', glyph: SVG.herald };
+        return { title: 'Héraut de la Faille', sub, accent: teamAccent, flag: ev.stolen ? 'Volé !' : '', glyph: SVG.herald, kind: 'herald' };
       case 'atakhan':
         return { title: 'Atakhan', sub, accent: teamAccent, flag: ev.stolen ? 'Volé !' : '', glyph: SVG.baron };
       case 'inhib':
-        return { title: 'Inhibiteur détruit', sub: team, accent: teamAccent, glyph: SVG.inhib };
+        return { title: 'Inhibiteur détruit', sub: team, accent: teamAccent, glyph: SVG.inhib, kind: 'inhibitor' };
       case 'firstblood':
         return { title: 'Premier sang', sub, accent: teamAccent, glyph: SVG.swords };
       case 'multikill':
@@ -413,7 +439,7 @@
     // Pastille de gauche : le champion s'il est connu, sinon un pictogramme de l'objectif.
     const emblem = el('div', 'b-emblem');
     if (ev.actor && ev.actor.champKey) emblem.append(icon('champ', ev.actor.champKey, ev.actor.champion || ev.actor.name, 'md'));
-    else emblem.append(html('span', 'b-glyph', info.glyph));
+    else emblem.append(objIcon(info.kind, ev.team, info.glyph, 'b-glyph'));
     node.append(emblem);
 
     const body = el('div', 'b-body');
@@ -423,7 +449,7 @@
     body.append(title, el('div', 'b-sub', info.sub));
     node.append(body);
     // Quand la pastille montre le champion, le pictogramme de l'objectif passe à droite : on voit tout de suite de quoi il s'agit.
-    if (ev.actor && ev.actor.champKey) node.append(html('span', 'b-mark', info.glyph));
+    if (ev.actor && ev.actor.champKey) node.append(objIcon(info.kind, ev.team, info.glyph, 'b-mark'));
 
     bannersEl.append(node);
     requestAnimationFrame(() => requestAnimationFrame(() => node.classList.add('in')));
@@ -523,6 +549,7 @@
   /* ------------------------------------------------ champions sur les côtés */
 
   const sidesEl = $('sides');
+  const mapFrameEl = $('mapframe');
   let sidesKey = '';
   let sideRows = [];
 
@@ -543,13 +570,25 @@
       .catch(() => {});
   }
 
+  /* Un sort d'invocateur : son icône, avec le compte à rebours de sa recharge par-dessus quand un chrono tourne. */
+  function spellIcon(sp) {
+    const ic = icon('spell', sp.key, sp.name, 'spell');
+    const cd = el('span', 'cdtxt');
+    ic.append(cd);
+    return { ic, cd };
+  }
+
   /* Sorts d'invocateur et runes d'un joueur : deux petites colonnes, à l'intérieur de l'écran. */
-  function miniIcons(p) {
+  function miniIcons(p, refs) {
     const box = el('div', 's-mini');
     const spells = (p.spells || []).slice(0, 2);
     if (spells.length) {
       const col = el('div', 's-col');
-      for (const sp of spells) col.append(icon('spell', sp.key, sp.name, 'spell'));
+      spells.forEach((sp, slot) => {
+        const si = spellIcon(sp);
+        refs.push({ slot, ic: si.ic, cd: si.cd });
+        col.append(si.ic);
+      });
       box.append(col);
     }
     const r = p.runes || {};
@@ -565,23 +604,16 @@
     return box;
   }
 
-  /* Une ligne : portrait avec niveau (ou temps de réapparition), pseudo, K/D/A, sorts et runes. */
+  /* Une ligne : portrait avec niveau (ou temps de réapparition), sorts et runes (pas de pseudo : le champion suffit). */
   function buildSideRow(p, side) {
     const root = el('div', 'srow ' + sideCls(side));
     const champ = icon('champ', p.champKey, p.champion || p.name, 'lg');
     const lvl = el('b', 'lvl', p.level);
     const resp = el('span', 'resp');
     champ.append(lvl, resp);
-    const id = el('div', 's-id');
-    const name = el('span', 'pn', p.name);
-    const kda = el('span', 'kda');
-    const k = el('b', 'k', '0');
-    const d = el('b', 'd', '0');
-    const a = el('b', 'a', '0');
-    kda.append(k, el('s', '', '/'), d, el('s', '', '/'), a);
-    id.append(name, kda);
-    root.append(champ, id, miniIcons(p));
-    return { root, name, k, d, a, lvl, resp };
+    const spellRefs = [];
+    root.append(champ, miniIcons(p, spellRefs));
+    return { root, lvl, resp, spellRefs };
   }
 
   function renderSides(g) {
@@ -607,15 +639,29 @@
     for (const c of sideRows) {
       const p = g.teams[c.side].players.find((x) => x.index === c.p);
       if (!p) continue;
-      setText(c.name, p.name);
-      setText(c.k, p.kills);
-      setText(c.d, p.deaths);
-      setText(c.a, p.assists);
       setText(c.lvl, p.level);
       setText(c.resp, p.isDead && p.respawn > 0 ? p.respawn : '');
       c.root.classList.toggle('dead', !!p.isDead);
     }
+    updateCooldowns();
   }
+
+  /* Compte à rebours des sorts : chronos lancés à la main depuis le panneau, en heure de jeu. */
+  const fmtCd = (s) => (s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : String(s));
+  function updateCooldowns() {
+    if (!S || !S.game || !sideRows.length) return;
+    const now = gameNow();
+    const all = S.cooldowns || {};
+    for (const c of sideRows) {
+      for (const sr of c.spellRefs) {
+        const cd = all[`${c.side}:${c.p}:${sr.slot}`];
+        const left = cd ? Math.ceil(cd.endAt - now) : 0;
+        sr.ic.classList.toggle('cd', left > 0);
+        setText(sr.cd, left > 0 ? fmtCd(left) : '');
+      }
+    }
+  }
+  setInterval(updateCooldowns, 250);
 
   /* ------------------------------------------------------------------ sponsors */
 
@@ -851,13 +897,12 @@
     const art = el('div', 'dr-art');
     art.append(el('span', 'ini'));
     const info = el('div', 'dr-info');
-    const pos = el('div', 'dr-pos');
     const champ = el('div', 'dr-champ');
     const who = el('div', 'dr-who');
     info.append(champ, who);
     const state = el('div', 'dr-state');
-    root.append(art, pos, info, state);
-    return { root, art, pos, champ, who, state, imgKey: '' };
+    root.append(art, info, state);
+    return { root, art, champ, who, state, imgKey: '' };
   }
 
   function buildDraft(d) {
@@ -904,7 +949,6 @@
 
   function renderCard(ref, p) {
     ref.root.className = `dr-card ${ref.root.classList.contains('red') ? 'red' : 'blue'} ${p.state}${p.local ? ' local' : ''}`;
-    setText(ref.pos, p.position || '');
     setText(ref.champ, p.name || '—');
     // La police des titres est très large : on réduit le nom jusqu'à ce que son plus long mot tienne dans la colonne (140 px).
     const longest = Math.max(1, ...String(p.name || '').split(/\s+/).map((w) => w.length));
@@ -984,6 +1028,68 @@
   }
   setInterval(updateDraftTimer, 200);
 
+  /*
+   * Page de chargement : après la sélection des champions, la partie met un moment à se charger. On y montre le
+   * temps écoulé et le poste de chaque joueur (avec son champion), jusqu'à ce que la partie soit là.
+   */
+
+  const loadEl = $('loadscreen');
+  const lv = { built: false, cols: {}, elapsed0: 0, at: 0 };
+
+  function buildLoadScreen() {
+    loadEl.textContent = '';
+    const panel = el('div', 'ld-panel');
+    const head = el('div', 'ld-head');
+    head.append(el('i', 'ld-spin'), el('span', 'ld-title', 'La partie se charge'));
+    lv.timer = el('div', 'ld-timer');
+    setDigits(lv.timer, '00:00');
+    const bar = el('div', 'ld-bar');
+    bar.append(el('i'));
+    const grid = el('div', 'ld-grid');
+    for (const side of ['ORDER', 'CHAOS']) {
+      const col = el('div', 'ld-col ' + sideCls(side));
+      const team = el('div', 'ld-team');
+      const rows = el('div', 'ld-rows');
+      col.append(team, rows);
+      grid.append(col);
+      lv.cols[side] = { team, rows, key: '' };
+    }
+    panel.append(el('div', 'ld-kicker', 'Sélection terminée'), head, lv.timer, el('div', 'ld-timer-label', 'Temps de chargement'), bar, grid);
+    loadEl.append(panel);
+    lv.built = true;
+  }
+
+  function renderLoadScreen(ld) {
+    if (!lv.built) buildLoadScreen();
+    // Le serveur donne le temps écoulé au moment de l'envoi ; cette page le prolonge seconde après seconde.
+    lv.elapsed0 = ld.elapsedMs;
+    lv.at = performance.now();
+    for (const side of ['ORDER', 'CHAOS']) {
+      const col = lv.cols[side];
+      setText(col.team, teamNameOf(side));
+      const picks = ld.data.teams[side].picks;
+      const key = JSON.stringify(picks.map((p) => [p.position, p.player, p.key, p.name])) + '/' + S.ddragon;
+      if (col.key === key) continue;
+      col.key = key;
+      col.rows.textContent = '';
+      picks.forEach((p, i) => {
+        const row = el('div', 'ld-row');
+        const champ = p.key ? icon('champ', p.key, p.name, 'md') : el('span', 'ico champ md empty');
+        const who = el('div', 'ld-who');
+        who.append(el('b', '', p.player || p.name || '—'), el('small', '', p.player ? p.name : ''));
+        row.append(el('span', 'ld-pos', p.position || 'Joueur ' + (i + 1)), champ, who);
+        col.rows.append(row);
+      });
+    }
+    updateLoadTimer();
+  }
+
+  function updateLoadTimer() {
+    if (!lv.built) return;
+    setDigits(lv.timer, mmss((lv.elapsed0 + (performance.now() - lv.at)) / 1000));
+  }
+  setInterval(updateLoadTimer, 250);
+
   /* -------------------------------------------------------------- orchestration */
 
   const hint = $('hint');
@@ -1032,6 +1138,8 @@
     feedEl.classList.toggle('off', !(hud && cfg.display.feed));
     bannersEl.classList.toggle('off', !(hud && cfg.display.banners));
     sidesEl.classList.toggle('off', !(hud && cfg.display.sides));
+    mapFrameEl.classList.toggle('off', !(hud && cfg.display.mapFrame));
+    mapFrameEl.style.setProperty('--map', (cfg.display.mapSize || 280) + 'px');
     playersEl.classList.toggle('off', !(hud && showPlayers()));
     sponsorEl.classList.toggle('off', !(cfg.display.sponsors && sponsorItems().length && !endVisible && !draftOn && !VIEW_DRAFT));
     hint.classList.toggle('on', PREVIEW && (VIEW_DRAFT ? !draftOn : !live && !endVisible && !draftOn));
@@ -1041,6 +1149,11 @@
 
     if (draftOn) renderDraft(s.draft.data);
     draftEl.classList.toggle('show', draftOn);
+
+    // La page de chargement prend la suite de la sélection des champions, et s'efface dès que la partie est là.
+    const loadOn = !!(s.loading && s.loading.visible && s.loading.data) && !draftOn && !endVisible && !live && !VIEW_DRAFT;
+    if (loadOn) renderLoadScreen(s.loading);
+    loadEl.classList.toggle('show', loadOn);
   }
 
   buildScorebar();

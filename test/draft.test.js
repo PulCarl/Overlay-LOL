@@ -3,7 +3,7 @@
 // Tests de l'analyse de la sélection des champions : « npm test » (lanceur intégré à Node.js, aucune dépendance).
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeDraft, indexFromDdragon, indexFromClientSummary } = require('../lib/draft');
+const { normalizeDraft, indexFromDdragon, indexFromClientSummary, endedIntoGame } = require('../lib/draft');
 const { DemoDraft, DEMO_CHAMPS } = require('../lib/demo-draft');
 const { DemoGame } = require('../lib/demo');
 const { parseLockfile, parseCommandLine } = require('../lib/lcu');
@@ -187,4 +187,16 @@ test('simulateur : une sélection complète, du premier ban au dernier pick', ()
   assert.ok(all.every((p) => p.state === 'locked' && p.key), 'les 10 picks sont verrouillés');
   const names = [...last.teams.ORDER.bans, ...last.teams.CHAOS.bans, ...all].map((x) => x.name);
   assert.equal(new Set(names).size, 20, 'aucun champion en double');
+});
+
+test('seule une sélection menée à son terme mène au chargement de la partie', () => {
+  const done = (id, type) => ({ id, actorCellId: 0, type, championId: 64, completed: true, isInProgress: false, isAllyAction: true });
+  const final = normalizeDraft(session({ timer: { phase: 'FINALIZATION' }, actions: [[done(0, 'ban'), done(1, 'pick')]] }), CHAMPS);
+  assert.equal(final.step, 'finalization');
+  assert.equal(endedIntoGame(final), true);
+  assert.equal(endedIntoGame(normalizeDraft(session({ timer: { phase: 'GAME_STARTING' }, actions: [[done(0, 'ban'), done(1, 'pick')]] }), CHAMPS)), true, 'la partie démarre');
+  assert.equal(endedIntoGame(normalizeDraft(session(), CHAMPS)), false, 'en plein ban : une sélection interrompue n\'est pas un chargement');
+  assert.equal(endedIntoGame(normalizeDraft(session({ timer: { phase: 'PLANNING' }, actions: [] }), CHAMPS)), false);
+  assert.equal(endedIntoGame(null), false);
+  assert.equal(endedIntoGame(undefined), false);
 });

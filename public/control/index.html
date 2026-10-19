@@ -20,6 +20,7 @@
 
   <nav class="tabs" role="tablist" aria-label="Sections">
     <button type="button" role="tab" data-tab="main" aria-selected="true">Principal</button>
+    <button type="button" role="tab" data-tab="spells" aria-selected="false">Sorts</button>
     <button type="button" role="tab" data-tab="display" aria-selected="false">Affichage</button>
     <button type="button" role="tab" data-tab="teams" aria-selected="false">Équipes</button>
     <button type="button" role="tab" data-tab="obs" aria-selected="false">OBS</button>
@@ -146,6 +147,26 @@
       </section>
     </div>
 
+    <!-- ============================================================ Sorts -->
+    <div class="page" id="tab-spells" role="tabpanel" hidden>
+      <section class="card">
+        <div class="card-head">
+          <h2><span aria-hidden="true">⏱️</span> Chronos des sorts</h2>
+          <button class="btn small ghost" id="cd-clear-all" type="button">Tout arrêter</button>
+        </div>
+        <p class="hint first" id="cd-info"></p>
+        <p class="hint">Le jeu ne dit pas quand un sort est lancé : cliquez sur le sort au moment où le joueur l'utilise. Le compte à rebours s'affiche sur son icône, dans la colonne du joueur (overlay). La durée tient compte des bottes de lucidité, détectées toutes seules ; cochez « Perspicacité » pour la rune du même nom, que le jeu ne permet pas de voir.</p>
+      </section>
+      <section class="card cd-card blue">
+        <div class="card-head"><h2 id="cd-title-blue">Équipe bleue</h2></div>
+        <div class="cdlist" id="cd-blue"></div>
+      </section>
+      <section class="card cd-card red">
+        <div class="card-head"><h2 id="cd-title-red">Équipe rouge</h2></div>
+        <div class="cdlist" id="cd-red"></div>
+      </section>
+    </div>
+
     <!-- ============================================================ Affichage -->
     <div class="page" id="tab-display" role="tabpanel" hidden>
       <section class="card">
@@ -167,9 +188,11 @@
           <label class="switch"><input type="checkbox" data-disp="feed"><i></i><span>Fil d'actions</span></label>
           <label class="switch"><input type="checkbox" data-disp="banners"><i></i><span>Bandeaux d'objectifs</span></label>
           <label class="switch"><input type="checkbox" data-disp="sides"><i></i><span>Champions sur les côtés</span></label>
+          <label class="switch"><input type="checkbox" data-disp="mapFrame"><i></i><span>Cadre autour de la minimap</span></label>
           <label class="switch"><input type="checkbox" data-disp="players"><i></i><span>Panneau des joueurs <small id="players-auto"></small></span></label>
           <label class="switch"><input type="checkbox" data-disp="sponsors"><i></i><span>Sponsors</span></label>
           <label class="switch"><input type="checkbox" data-disp="draft"><i></i><span>Picks et bans (pendant la sélection)</span></label>
+          <label class="switch"><input type="checkbox" data-disp="loadscreen"><i></i><span>Page de chargement (entre la sélection et la partie)</span></label>
         </div>
         <div class="row">
           <label class="slider">Échelle <output id="scale-out">100 %</output>
@@ -177,6 +200,12 @@
           </label>
           <button class="btn small ghost" id="players-reset" type="button" hidden>Panneau des joueurs : remettre en automatique</button>
         </div>
+        <div class="row">
+          <label class="slider">Cadre de la minimap <output id="map-out">280 px</output>
+            <input type="range" id="map-size" min="160" max="480" step="5" value="280">
+          </label>
+        </div>
+        <p class="hint">Réglez la taille du cadre pour qu'il épouse la minimap de votre jeu (en bas à droite de l'écran).</p>
       </section>
 
       <section class="card">

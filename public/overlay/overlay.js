@@ -369,7 +369,6 @@
       row.append(actorIcon(k, side), el('span', 'fn killer', k.name || 'Exécution'));
       row.append(html('span', 'arrow', SVG.arrow));
       row.append(el('span', 'fn victim', v.name || '?'), actorIcon(v, v.team || victimSide));
-      if (ev.assists > 0) row.append(el('span', 'assist', '+' + ev.assists));
     } else {
       row.append(objIcon('tower', side, SVG.tower, 'tw-ico'));
       const t = teamOf(side);

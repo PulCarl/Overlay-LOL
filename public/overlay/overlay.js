@@ -604,17 +604,16 @@
     return box;
   }
 
-  /* Une ligne : portrait avec niveau (ou temps de réapparition), pseudo, sorts et runes. */
+  /* Une ligne : portrait avec niveau (ou temps de réapparition), sorts et runes (pas de pseudo : le champion suffit). */
   function buildSideRow(p, side) {
     const root = el('div', 'srow ' + sideCls(side));
     const champ = icon('champ', p.champKey, p.champion || p.name, 'lg');
     const lvl = el('b', 'lvl', p.level);
     const resp = el('span', 'resp');
     champ.append(lvl, resp);
-    const name = el('span', 'pn', p.name);
     const spellRefs = [];
-    root.append(champ, name, miniIcons(p, spellRefs));
-    return { root, name, lvl, resp, spellRefs };
+    root.append(champ, miniIcons(p, spellRefs));
+    return { root, lvl, resp, spellRefs };
   }
 
   function renderSides(g) {
@@ -640,7 +639,6 @@
     for (const c of sideRows) {
       const p = g.teams[c.side].players.find((x) => x.index === c.p);
       if (!p) continue;
-      setText(c.name, p.name);
       setText(c.lvl, p.level);
       setText(c.resp, p.isDead && p.respawn > 0 ? p.respawn : '');
       c.root.classList.toggle('dead', !!p.isDead);
@@ -899,13 +897,12 @@
     const art = el('div', 'dr-art');
     art.append(el('span', 'ini'));
     const info = el('div', 'dr-info');
-    const pos = el('div', 'dr-pos');
     const champ = el('div', 'dr-champ');
     const who = el('div', 'dr-who');
     info.append(champ, who);
     const state = el('div', 'dr-state');
-    root.append(art, pos, info, state);
-    return { root, art, pos, champ, who, state, imgKey: '' };
+    root.append(art, info, state);
+    return { root, art, champ, who, state, imgKey: '' };
   }
 
   function buildDraft(d) {
@@ -952,7 +949,6 @@
 
   function renderCard(ref, p) {
     ref.root.className = `dr-card ${ref.root.classList.contains('red') ? 'red' : 'blue'} ${p.state}${p.local ? ' local' : ''}`;
-    setText(ref.pos, p.position || '');
     setText(ref.champ, p.name || '—');
     // La police des titres est très large : on réduit le nom jusqu'à ce que son plus long mot tienne dans la colonne (140 px).
     const longest = Math.max(1, ...String(p.name || '').split(/\s+/).map((w) => w.length));
@@ -1032,6 +1028,68 @@
   }
   setInterval(updateDraftTimer, 200);
 
+  /*
+   * Page de chargement : après la sélection des champions, la partie met un moment à se charger. On y montre le
+   * temps écoulé et le poste de chaque joueur (avec son champion), jusqu'à ce que la partie soit là.
+   */
+
+  const loadEl = $('loadscreen');
+  const lv = { built: false, cols: {}, elapsed0: 0, at: 0 };
+
+  function buildLoadScreen() {
+    loadEl.textContent = '';
+    const panel = el('div', 'ld-panel');
+    const head = el('div', 'ld-head');
+    head.append(el('i', 'ld-spin'), el('span', 'ld-title', 'La partie se charge'));
+    lv.timer = el('div', 'ld-timer');
+    setDigits(lv.timer, '00:00');
+    const bar = el('div', 'ld-bar');
+    bar.append(el('i'));
+    const grid = el('div', 'ld-grid');
+    for (const side of ['ORDER', 'CHAOS']) {
+      const col = el('div', 'ld-col ' + sideCls(side));
+      const team = el('div', 'ld-team');
+      const rows = el('div', 'ld-rows');
+      col.append(team, rows);
+      grid.append(col);
+      lv.cols[side] = { team, rows, key: '' };
+    }
+    panel.append(el('div', 'ld-kicker', 'Sélection terminée'), head, lv.timer, el('div', 'ld-timer-label', 'Temps de chargement'), bar, grid);
+    loadEl.append(panel);
+    lv.built = true;
+  }
+
+  function renderLoadScreen(ld) {
+    if (!lv.built) buildLoadScreen();
+    // Le serveur donne le temps écoulé au moment de l'envoi ; cette page le prolonge seconde après seconde.
+    lv.elapsed0 = ld.elapsedMs;
+    lv.at = performance.now();
+    for (const side of ['ORDER', 'CHAOS']) {
+      const col = lv.cols[side];
+      setText(col.team, teamNameOf(side));
+      const picks = ld.data.teams[side].picks;
+      const key = JSON.stringify(picks.map((p) => [p.position, p.player, p.key, p.name])) + '/' + S.ddragon;
+      if (col.key === key) continue;
+      col.key = key;
+      col.rows.textContent = '';
+      picks.forEach((p, i) => {
+        const row = el('div', 'ld-row');
+        const champ = p.key ? icon('champ', p.key, p.name, 'md') : el('span', 'ico champ md empty');
+        const who = el('div', 'ld-who');
+        who.append(el('b', '', p.player || p.name || '—'), el('small', '', p.player ? p.name : ''));
+        row.append(el('span', 'ld-pos', p.position || 'Joueur ' + (i + 1)), champ, who);
+        col.rows.append(row);
+      });
+    }
+    updateLoadTimer();
+  }
+
+  function updateLoadTimer() {
+    if (!lv.built) return;
+    setDigits(lv.timer, mmss((lv.elapsed0 + (performance.now() - lv.at)) / 1000));
+  }
+  setInterval(updateLoadTimer, 250);
+
   /* -------------------------------------------------------------- orchestration */
 
   const hint = $('hint');
@@ -1091,6 +1149,11 @@
 
     if (draftOn) renderDraft(s.draft.data);
     draftEl.classList.toggle('show', draftOn);
+
+    // La page de chargement prend la suite de la sélection des champions, et s'efface dès que la partie est là.
+    const loadOn = !!(s.loading && s.loading.visible && s.loading.data) && !draftOn && !endVisible && !live && !VIEW_DRAFT;
+    if (loadOn) renderLoadScreen(s.loading);
+    loadEl.classList.toggle('show', loadOn);
   }
 
   buildScorebar();

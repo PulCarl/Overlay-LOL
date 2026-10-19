@@ -20,7 +20,7 @@ const { spawn, spawnSync } = require('child_process');
 
 const { computeGame, computeMvp, indexFromRunes, spellCooldown } = require('./lib/game');
 const { DemoGame } = require('./lib/demo');
-const { normalizeDraft, indexFromDdragon, indexFromClientSummary } = require('./lib/draft');
+const { normalizeDraft, indexFromDdragon, indexFromClientSummary, endedIntoGame } = require('./lib/draft');
 const { LcuClient } = require('./lib/lcu');
 const { DemoDraft, DEMO_CHAMPS } = require('./lib/demo-draft');
 
@@ -53,6 +53,8 @@ const DEMO = hasFlag('demo');
 const DEMO_SPEED = Math.max(1, numOpt('speed', 12));
 const DEMO_START = Math.max(0, numOpt('start', 0));
 const DEMO_SPECTATOR = hasFlag('spectator');
+// --loading=9 : en démo complète, secondes de chargement entre la fin de la sélection des champions et le début de la partie.
+const DEMO_LOADING_S = Math.max(0, numOpt('loading', 9));
 // --draft : la démo ne simule que la sélection des champions (picks et bans), en boucle, sans partie.
 // --full : démo complète : sélection des champions, puis partie, puis écran de fin, puis on recommence.
 const DEMO_FULL = DEMO && hasFlag('full');
@@ -95,8 +97,9 @@ const DEFAULT_CONFIG = {
   // players: null = automatique (affiché seulement en mode spectateur).
   // draft : affiche les picks et bans pendant la sélection des champions.
   // sides : les champions de chaque équipe sur les côtés de l'écran.
+  // loadscreen : la page de chargement (postes des joueurs et chrono) entre la sélection des champions et la partie.
   // mapFrame : un cadre autour de la minimap du jeu (en bas à droite) ; mapSize : son côté, en pixels (écran de 1920×1080).
-  display: { mode: 'player', scoreboard: true, feed: true, banners: true, players: null, sides: true, mapFrame: true, mapSize: 280, sponsors: true, draft: true, scale: 1 },
+  display: { mode: 'player', scoreboard: true, feed: true, banners: true, players: null, sides: true, mapFrame: true, mapSize: 280, sponsors: true, draft: true, loadscreen: true, scale: 1 },
   sponsors: [],
   sponsorInterval: 12,
   presets: [],
@@ -142,7 +145,7 @@ function applyConfigPatch(cfg, p) {
   if (isObj(p.display)) {
     const d = p.display;
     if ('mode' in d && ['player', 'spectator'].includes(d.mode)) cfg.display.mode = d.mode;
-    for (const k of ['scoreboard', 'feed', 'banners', 'sides', 'mapFrame', 'sponsors', 'draft']) if (k in d) cfg.display[k] = !!d[k];
+    for (const k of ['scoreboard', 'feed', 'banners', 'sides', 'mapFrame', 'sponsors', 'draft', 'loadscreen']) if (k in d) cfg.display[k] = !!d[k];
     if ('mapSize' in d) cfg.display.mapSize = int(d.mapSize, 160, 480, cfg.display.mapSize);
     if ('players' in d) cfg.display.players = d.players === null ? null : !!d.players;
     if ('scale' in d) {
@@ -216,6 +219,9 @@ const S = {
   lastGame: null, // instantané de la dernière partie terminée
   endScreenVisible: false,
   gameAt: 0, // heure (Date.now) de la dernière lecture du jeu
+  // Chargement de la partie : { since (Date.now), data (la sélection qui vient de se terminer) } entre la fin de la sélection
+  // des champions et le moment où la partie est chargée ; null le reste du temps.
+  loading: null,
   // Chronos de recharge des sorts, lancés à la main : « équipe:joueur:sort » → { endAt (heure de jeu), total }.
   cooldowns: {},
   cosmic: {}, // « équipe:joueur » → Perspicacité cosmique (-18 % de recharge)
@@ -307,6 +313,16 @@ function draftState() {
   };
 }
 
+/* La partie ne se lance parfois jamais (client fermé pendant le chargement) : on abandonne l'écran de chargement après 15 minutes. */
+const LOADING_MAX_MS = 15 * 60 * 1000;
+
+/* Page de chargement : les postes des joueurs et le temps écoulé depuis la fin de la sélection. */
+function loadingState() {
+  if (S.loading && Date.now() - S.loading.since > LOADING_MAX_MS) S.loading = null;
+  if (!S.loading) return { visible: false };
+  return { visible: !!config.display.loadscreen, elapsedMs: Date.now() - S.loading.since, data: S.loading.data };
+}
+
 /* Heure de jeu estimée à cet instant (la dernière lecture du jeu date d'une seconde au plus). */
 function gameClock() {
   if (!S.game) return 0;
@@ -335,6 +351,7 @@ function publicState() {
   if (S.endScreenVisible) endGame = last || (S.game ? previewOf(S.game) : null);
   return {
     draft: draftState(),
+    loading: loadingState(),
     status: S.status,
     demo: DEMO,
     clockRate: DEMO ? DEMO_SPEED : 1,
@@ -492,9 +509,16 @@ function handleDraft(raw) {
   const d = raw ? normalizeDraft(raw, champs) : null;
   if (d && !S.draft) {
     S.endScreenVisible = false; // une nouvelle sélection commence : l'écran de fin de la partie précédente s'efface
+    S.loading = null;
     log(`Sélection des champions détectée${d.spectating ? ' (en spectateur)' : ''}.`);
   }
-  if (!d && S.draft) log('Sélection des champions terminée.');
+  if (!d && S.draft) {
+    log('Sélection des champions terminée.');
+    if (endedIntoGame(S.draft)) {
+      S.loading = { since: Date.now(), data: S.draft };
+      log('Chargement de la partie : la page de chargement s\'affiche jusqu\'au début de la partie.');
+    }
+  }
   S.draft = d;
   if (d) {
     S.lastDraft = d;
@@ -526,6 +550,10 @@ function onApiDown() {
 }
 
 function onGame(raw) {
+  if (S.loading) {
+    S.loading = null; // la partie est chargée
+    log('Partie chargée : fin de la page de chargement.');
+  }
   const game = computeGame(raw);
   const first = S.gameId === 0;
   const isNew = first || game.signature !== S.signature || game.gameTime < S.lastGameTime - 5;
@@ -572,10 +600,15 @@ let demo = null;
 let demoPhase = 'draft';
 let demoGameUp = false;
 let demoOfflineSince = 0;
+let demoLoadingSince = 0;
 function demoGameRaw() {
   if (!DEMO_FULL) return demo ? demo.snapshot() : null; // --draft : pas de partie ; démo seule : la partie
   if (demoPhase === 'draft') {
     if (!demoDraft.finished) return null;
+    // La sélection est terminée : la partie se charge quelques secondes avant de commencer, comme dans le vrai jeu.
+    if (!demoLoadingSince) demoLoadingSince = Date.now();
+    if (Date.now() - demoLoadingSince < DEMO_LOADING_S * 1000) return null;
+    demoLoadingSince = 0;
     demoPhase = 'game';
     demo = new DemoGame({ speed: DEMO_SPEED, start: DEMO_START, spectator: DEMO_SPECTATOR });
     demoGameUp = false;

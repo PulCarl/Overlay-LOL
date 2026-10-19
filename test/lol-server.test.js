@@ -23,10 +23,11 @@ const freePort = () =>
     });
   });
 
-async function withServer(fn) {
+/* Lance le serveur sur un port libre ; renvoie de quoi l'interroger et l'arrêter. */
+async function startServer(args) {
   const port = await freePort();
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lol-test-'));
-  const child = spawn(process.execPath, ['server.js', '--demo', '--speed=1', '--start=900'], {
+  const child = spawn(process.execPath, ['server.js', ...args], {
     cwd: ROOT,
     env: { ...process.env, PORT: String(port), OVERLAY_DATA_DIR: dir, NO_LCU: '1' },
     stdio: 'ignore',
@@ -34,12 +35,21 @@ async function withServer(fn) {
   const base = `http://127.0.0.1:${port}`;
   const state = () => fetch(base + '/api/state').then((r) => r.json());
   const post = (url, body, headers = {}) => fetch(base + url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) });
+  const stop = () => {
+    child.kill();
+    fs.rmSync(dir, { recursive: true, force: true });
+  };
+  return { base, state, post, stop };
+}
+
+async function withServer(fn) {
+  const srv = await startServer(['--demo', '--speed=1', '--start=900']);
   try {
     // La partie de démonstration apparaît à la première lecture, au bout d'une seconde environ.
     let s = null;
     for (let i = 0; i < 80; i++) {
       try {
-        s = await state();
+        s = await srv.state();
         if (s.game) break;
       } catch (_) {
         /* le serveur démarre */
@@ -47,10 +57,9 @@ async function withServer(fn) {
       await new Promise((r) => setTimeout(r, 150));
     }
     assert.ok(s && s.game, 'la partie de démonstration n\'est pas apparue');
-    await fn({ base, state, post });
+    await fn({ base: srv.base, state: srv.state, post: srv.post });
   } finally {
-    child.kill();
-    fs.rmSync(dir, { recursive: true, force: true });
+    srv.stop();
   }
 }
 
@@ -60,6 +69,7 @@ test('réglages d\'affichage : colonnes des côtés et cadre de la minimap', asy
     assert.equal(d.sides, true);
     assert.equal(d.mapFrame, true);
     assert.equal(d.mapSize, 280);
+    assert.equal(d.loadscreen, true, 'la page de chargement est active par défaut');
 
     await post('/api/config', { display: { mapSize: 9999, sides: false } });
     d = (await state()).config.display;
@@ -131,4 +141,48 @@ test('chronos des sorts : demandes invalides et garde-fou', async () => {
     const plain = await fetch(base + '/api/cooldown', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: '{}' });
     assert.equal(plain.status, 403);
   });
+});
+
+test('page de chargement : désactivable depuis les réglages d\'affichage', async () => {
+  await withServer(async ({ state, post }) => {
+    assert.deepEqual((await state()).loading, { visible: false }, 'rien à charger pendant une partie');
+    await post('/api/config', { display: { loadscreen: false } });
+    assert.equal((await state()).config.display.loadscreen, false);
+    await post('/api/config', { display: { loadscreen: true } });
+    assert.equal((await state()).config.display.loadscreen, true);
+  });
+});
+
+test('démo complète : sélection → page de chargement avec les postes → partie, dans cet ordre', async () => {
+  const srv = await startServer(['--demo', '--full', '--speed=600', '--loading=3']);
+  try {
+    const seen = [];
+    let sample = null;
+    let later = null;
+    for (let i = 0; i < 400; i++) {
+      let s;
+      try {
+        s = await srv.state();
+      } catch (_) {
+        await new Promise((r) => setTimeout(r, 100));
+        continue;
+      }
+      const phase = s.game ? 'partie' : s.loading.visible ? 'chargement' : s.draft.live ? 'sélection' : 'autre';
+      if (seen[seen.length - 1] !== phase) seen.push(phase);
+      if (phase === 'chargement' && !sample) sample = s.loading;
+      if (phase === 'chargement' && sample && !later && s.loading.elapsedMs > sample.elapsedMs + 600) later = s.loading;
+      if (phase === 'partie') break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    assert.deepEqual(seen.filter((p) => p !== 'autre'), ['sélection', 'chargement', 'partie']);
+    assert.equal(sample.data.step, 'finalization', 'le chargement prend la suite d\'une sélection menée à son terme');
+    const roles = (side) => sample.data.teams[side].picks.map((p) => p.position);
+    assert.deepEqual(roles('ORDER'), ['Top', 'Jungle', 'Mid', 'ADC', 'Support']);
+    assert.deepEqual(roles('CHAOS'), ['Top', 'Jungle', 'Mid', 'ADC', 'Support']);
+    assert.ok(sample.data.teams.ORDER.picks.every((p) => p.player && p.key), 'chaque joueur a son pseudo et son champion');
+    assert.ok(later && later.elapsedMs > sample.elapsedMs, 'le temps de chargement avance');
+    assert.equal((await srv.state()).loading.visible, false, 'plus de chargement une fois la partie là');
+  } finally {
+    srv.stop();
+  }
 });

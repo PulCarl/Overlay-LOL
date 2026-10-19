@@ -843,7 +843,7 @@ body.preview {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 258px;
+  width: max-content;
   display: flex;
   flex-direction: column;
   justify-content: center; /* les cinq lignes sont centrées sur la hauteur de l'écran */
@@ -902,12 +902,6 @@ body.preview {
 }
 .srow .resp {
   font-size: 21px;
-}
-.srow .pn {
-  flex: 1;
-  min-width: 0;
-  font-size: 16px;
-  font-weight: 700;
 }
 .srow.dead {
   opacity: 0.6;
@@ -1960,19 +1954,6 @@ body.preview {
   bottom: 24px;
   text-align: center;
 }
-.dr-pos {
-  position: absolute;
-  z-index: 2;
-  left: 0;
-  right: 0;
-  top: 16px;
-  font: 600 14px/1 var(--txt);
-  letter-spacing: 0.22em;
-  text-align: center;
-  text-transform: uppercase;
-  color: var(--purple-l);
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
-}
 .dr-champ {
   margin: 0 0 6px;
   font: 400 24px/1.12 var(--disp);
@@ -2000,7 +1981,7 @@ body.preview {
   z-index: 2;
   left: 0;
   right: 0;
-  top: 44px;
+  top: 18px;
   font: 400 12px/1 var(--disp);
   letter-spacing: 0.18em;
   text-align: center;
@@ -2063,4 +2044,193 @@ body.preview {
   height: 26px;
   background: linear-gradient(135deg, #c590ff, #9e42ed);
   clip-path: polygon(0 100%, 100% 0, 100% 5px, 5px 100%);
+}
+
+/* ------------------------------------------------------------ page de chargement de la partie */
+
+/* Même fond que la sélection des champions : la page de chargement en est la suite. */
+#loadscreen {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(1200px 620px at 50% -12%, rgba(158, 66, 237, 0.45), transparent 66%),
+    radial-gradient(1000px 520px at 50% 112%, rgba(72, 2, 222, 0.34), transparent 70%),
+    repeating-linear-gradient(115deg, transparent 0 84px, rgba(158, 66, 237, 0.05) 84px 86px),
+    linear-gradient(180deg, #06070f, var(--black));
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+#loadscreen.show {
+  opacity: 1;
+  visibility: visible;
+}
+.ld-panel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1320px;
+  transform: translate(-50%, -50%);
+}
+.ld-kicker {
+  text-align: center;
+  font: 600 16px/1 var(--txt);
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--purple-l);
+}
+.ld-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 16px;
+}
+.ld-spin {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(158, 66, 237, 0.3);
+  border-top-color: var(--purple-l);
+  border-radius: 50%;
+  animation: ld-spin 0.9s linear infinite;
+}
+.ld-title {
+  font: 400 44px/1 var(--disp);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-shadow: 0 0 30px rgba(158, 66, 237, 0.6);
+}
+.ld-timer {
+  display: flex;
+  justify-content: center;
+  margin-top: 22px;
+  font: 400 96px/1.05 var(--disp);
+  color: #fff;
+  text-shadow: 0 0 28px rgba(158, 66, 237, 0.7);
+}
+.ld-timer .dg {
+  display: block;
+  width: 0.95em;
+  text-align: center;
+}
+.ld-timer .sep {
+  display: block;
+  width: 0.5em;
+  text-align: center;
+}
+.ld-timer-label {
+  margin-top: 4px;
+  text-align: center;
+  font: 600 14px/1 var(--txt);
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+/* Durée inconnue : une barre qui va et vient plutôt qu'une progression. */
+.ld-bar {
+  width: 640px;
+  height: 8px;
+  margin: 22px auto 40px;
+  overflow: hidden;
+  background: rgba(158, 66, 237, 0.2);
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+}
+.ld-bar i {
+  display: block;
+  width: 35%;
+  height: 100%;
+  background: var(--grad-head);
+  animation: ld-slide 1.1s ease-in-out infinite alternate;
+}
+.ld-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 56px;
+}
+.ld-col {
+  --c: var(--blue);
+}
+.ld-col.red {
+  --c: var(--red);
+}
+.ld-team {
+  margin-bottom: 8px;
+  padding: 0 0 10px;
+  border-bottom: 3px solid var(--c);
+  font: 400 18px/1 var(--disp);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--c);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ld-col.red .ld-team {
+  text-align: right;
+}
+.ld-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: 78px;
+  border-bottom: 1px solid rgba(158, 66, 237, 0.22);
+}
+.ld-col.red .ld-row {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+.ld-pos {
+  flex: none;
+  width: 130px;
+  font: 600 18px/1 var(--txt);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--purple-l);
+}
+.ld-row .ico.md {
+  width: 58px;
+  height: 58px;
+  box-shadow: 0 0 0 3px var(--c);
+}
+.ld-row .ico.empty {
+  opacity: 0.3;
+}
+.ld-who {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ld-who b {
+  display: block;
+  font: 700 26px/1.15 var(--txt);
+}
+.ld-who small {
+  display: block;
+  margin-top: 2px;
+  font: 600 14px/1.2 var(--txt);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+@keyframes ld-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes ld-slide {
+  from {
+    margin-left: 0;
+  }
+  to {
+    margin-left: 65%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ld-spin,
+  .ld-bar i {
+    animation: none;
+  }
 }

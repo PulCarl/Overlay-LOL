@@ -13,6 +13,7 @@ Un overlay de diffusion pour OBS, sur le même principe que JotaOverlay pour Roc
 
 ![Overlay LoL en partie](screenshots/overlay-partie.jpg)
 ![Picks et bans](screenshots/picks-et-bans.jpg)
+![Page des joueurs du drafter : chacun fait ses bans et ses picks depuis son lien](screenshots/drafter-joueur.jpg)
 ![Page de chargement entre la sélection et la partie](screenshots/chargement-partie.jpg)
 ![Écran de fin LoL](screenshots/ecran-de-fin.jpg)
 ![Overlay VALORANT en match](screenshots/valorant-overlay.jpg)
@@ -52,6 +53,7 @@ Un overlay de diffusion pour OBS, sur le même principe que JotaOverlay pour Roc
 4. **Picks et bans** *(facultatif, scène dédiée)*
    - [ ] La source `/overlay` les affiche déjà toute seule pendant la sélection des champions.
    - [ ] Pour une scène OBS réservée à la sélection, ajoutez une seconde source navigateur 1920×1080 sur `http://localhost:3000/overlay?view=draft` : elle n'affiche que les picks et bans.
+   - [ ] Pour un draft de tournoi où **les joueurs font eux-mêmes leurs bans et leurs picks**, utilisez l'onglet **Drafter** du panneau (voir « Drafter » plus bas) : il donne un lien à envoyer à chaque équipe, et l'overlay suit le draft en direct.
 5. **Lancer la partie**
    - [ ] Tout s'enchaîne tout seul : la page des picks et bans, puis la **page de chargement** avec le poste de chaque joueur pendant que la partie se charge, puis l'overlay de la partie.
    - [ ] Dès que la partie est chargée, le statut du panneau passe à « En partie » et l'overlay apparaît.
@@ -95,6 +97,7 @@ Pas de match sous la main ? Dans l'onglet **Affichage**, « Charger le match d'e
 - **Bandeaux d'objectifs** sous la barre : dragons (volés ou non), Nashor, Héraut, Atakhan, inhibiteurs, premier sang, triple, quadra et pentakill, ace.
 - **Tableau des joueurs** en bas au centre : deux colonnes de 5 lignes alignées par poste, avec champion, niveau, nom, K/D/A, objets et CS, et le temps de réapparition des joueurs morts. Affiché par défaut en mode spectateur.
 - **Picks et bans** plein écran pendant la sélection des champions : bans barrés, cinq grandes colonnes par équipe avec l'illustration du champion et le nom du joueur, chrono, étape en cours, équipe qui joue et score de la série.
+- **Drafter** : un draft de tournoi mené par les joueurs, chacun depuis un lien à partager (équipe bleue, équipe rouge, spectateur, régie). L'overlay des picks et bans le suit en direct, puis la page de chargement prend la suite.
 - **Page de chargement** entre la fin de la sélection et le début de la partie : le poste de chaque joueur (Top, Jungle, Mid, ADC, Support) avec son pseudo et son champion, et un chrono qui compte le temps de chargement. Elle s'efface toute seule quand la partie est là. Interrupteur « Page de chargement » dans l'onglet Affichage.
 - **Écran de fin** plein écran : équipe gagnante, score de la série, MVP, tableau des 10 joueurs et comparatif des objectifs.
 - **Sponsors** en rotation en haut à gauche.
@@ -148,7 +151,33 @@ Pendant la sélection des champions, le client League of Legends ouvre une petit
 - L'overlay montre ce que *votre* client montre, pas plus : il faut être en sélection des champions (classée, normale ou personnalisée). Les pseudos masqués par le client restent masqués.
 - Cette API du client n'est **pas documentée officiellement** par Riot : une mise à jour du jeu peut la changer, et la lecture n'a pas encore été vérifiée avec un vrai client (voir « Dépannage »).
 - **Page de chargement** : elle prend la suite d'une sélection menée jusqu'à la finalisation (une sélection interrompue n'en déclenche pas) et dure jusqu'à ce que l'API du jeu réponde avec les joueurs. Le chrono compte le temps écoulé depuis la fin de la sélection : le client ne donne pas de compte à rebours pendant le chargement. Sans lecture du client (option `--no-lcu`), il n'y a pas de page de chargement.
-- Option `--no-lcu` (ou variable `NO_LCU=1`) pour désactiver complètement cette lecture. [drafter.lol](https://drafter.lol/) reste utilisable à côté pour un draft de tournoi arbitré à part.
+- Option `--no-lcu` (ou variable `NO_LCU=1`) pour désactiver complètement cette lecture. Le **drafter** (section suivante) n'en dépend pas : il fonctionne aussi avec `--no-lcu`.
+
+### Drafter : un draft de tournoi mené par les joueurs
+
+Pour un draft de tournoi, ou une personnalisée où personne ne partage son écran : le drafter génère **un lien par équipe**. Chaque capitaine (ou chaque joueur) ouvre le sien dans un navigateur, fait ses bans et ses picks, et l'overlay des picks et bans suit en direct, avec le même design que pour une vraie sélection. C'est la même idée que [drafter.lol](https://drafter.lol/), mais branchée directement sur l'overlay du cast.
+
+![Onglet Drafter du panneau : déroulement et liens à partager](screenshots/drafter-panneau.png)
+
+1. **Préparer** : onglet **Drafter** du panneau, saisissez les cinq pseudos de chaque équipe (dans l'ordre Top, Jungle, Mid, ADC, Support) et la durée d'un tour (de 5 à 300 secondes, 30 par défaut), puis **Créer le draft et les liens**. Les noms et tags d'équipe viennent de l'onglet Principal.
+2. **Envoyer les liens** : quatre liens apparaissent, chacun avec un bouton « Copier » et le nombre de pages connectées.
+   - **Équipe bleue** et **équipe rouge** : la page de chaque équipe ; on n'y peut jouer que pendant le tour de son équipe.
+   - **Spectateur** : lecture seule (le coach, un autre commentateur…).
+   - **Régie** : joue pour l'équipe dont c'est le tour, pour dépanner quelqu'un qui a un souci.
+3. **Démarrer** : quand tout le monde est connecté, le bouton **Démarrer** lance le premier tour. L'overlay affiche aussitôt la page des picks et bans.
+4. **Le draft se joue tout seul** : chaque joueur clique sur un champion (le survol est visible de tous), choisit son poste pour un pick, puis **Bannir** ou **Choisir**. Un champion banni ou déjà pris est grisé pour tout le monde.
+5. **Fermer le draft** : l'overlay retire le draft et lance la **page de chargement** avec le poste et le champion de chacun, qui s'efface quand la partie est là.
+
+**Ordre et chrono.** Le draft de tournoi standard : 6 bans (3 par équipe en alternance, la bleue commence), 6 picks (bleu, rouge, rouge, bleu, bleu, rouge), 4 bans (rouge commence) puis 4 picks (rouge, bleu, bleu, rouge), soit 20 tours. Quand le chrono d'un tour tombe à zéro, le champion survolé est verrouillé ; sans survol, un ban est passé et un pick est tiré au sort, comme dans le client.
+
+**Le panneau garde la main** : Pause et Reprendre, **Annuler** (revient sur le dernier ban ou pick), **Passer le ban**, **Recommencer** (retour au salon d'attente, sans aucun ban ni pick) et **Fermer le draft**.
+
+**Faire joindre les joueurs.** Un second serveur, à part, sert uniquement les pages des joueurs : il écoute sur le port `3002` (variable `DRAFTER_PORT`, et `DRAFTER_HOST` pour l'adresse d'écoute, `0.0.0.0` par défaut). Il n'existe que pendant un draft, et seul ce port est ouvert au réseau : le panneau et l'overlay restent sur `127.0.0.1`.
+
+- **Sur le même réseau** (même box, même salle) : l'adresse proposée par le panneau suffit, du genre `http://192.168.1.20:3002`. Windows peut demander d'autoriser le programme dans le pare-feu : acceptez pour les réseaux privés.
+- **À distance** : les joueurs ne peuvent pas joindre votre ordinateur directement. Ouvrez un tunnel vers le port 3002 avec un outil comme Cloudflare Tunnel ou ngrok, puis collez l'adresse publique qu'il donne dans le champ « Adresse à partager » : les quatre liens sont réécrits avec cette adresse. Cette partie n'a pas été essayée avec un vrai tunnel pour l'instant.
+- **Sécurité** : chaque lien porte un jeton secret de 12 caractères, tiré au hasard, qui donne un rôle et un seul. Un lien ne sert qu'à ce draft : en recréant un draft, tous les anciens liens cessent de marcher. Les jetons ne sont jamais diffusés avec l'état de l'overlay, seul le panneau (en local) les connaît. Quiconque a un lien peut s'en servir : envoyez-les seulement aux bonnes personnes.
+- Le draft reste dans la mémoire du programme : le fermer, ou l'arrêter, l'efface. Pendant un drafter, il prend la place de la lecture du client LoL pour l'overlay des picks et bans.
 
 ### VALORANT : un overlay piloté à la main
 
@@ -199,6 +228,7 @@ Dans `app/games.js`, ajoutez une entrée `status: 'ready'` avec une fonction `st
 2. **Serveurs Node.js** (sans aucune dépendance) : `server.js` pour LoL (port 3000) interroge ces deux sources, `valorant-server.js` (port 3001) garde le match saisi. Chacun fusionne l'état avec les réglages du panneau et le diffuse par *Server-Sent Events* sur `/events`.
 3. **Interfaces** : pour chaque jeu, la page `/overlay` (source navigateur d'OBS) et la page `/control` (panneau) se mettent à jour en direct.
 4. **Application de bureau** (Electron) : un écran de choix du jeu, puis le serveur du jeu choisi et son panneau dans la même fenêtre.
+5. **Drafter** (LoL) : quand un draft est créé, `server.js` ouvre un second serveur de partage (port 3002) pour les pages des joueurs. Le draft se présente à l'overlay comme une session du client LoL : l'overlay des picks et bans et la page de chargement n'ont rien de particulier à savoir.
 
 ---
 
@@ -209,6 +239,8 @@ Dans `app/games.js`, ajoutez une entrée `status: 'ready'` avec une fonction `st
 - `lib/game.js` : transforme la réponse de l'API en état d'overlay (événements, équipes, objectifs).
 - `lib/draft.js` : met en forme la sélection des champions (picks et bans).
 - `lib/lcu.js` : lecture du client LoL (port et mot de passe locaux).
+- `lib/drafter.js` : le moteur du drafter (ordre des tours, champions disponibles, chrono, annulation), sans réseau ni horloge, présenté à l'overlay comme une session du client.
+- `lib/drafter-share.js` : le serveur de partage du drafter (liens à jetons, pages des joueurs, flux en direct).
 - `lib/demo.js` et `lib/demo-draft.js` : simulateurs de partie et de sélection pour le mode démo.
 
 ### Noyau du système : VALORANT
@@ -219,6 +251,7 @@ Dans `app/games.js`, ajoutez une entrée `status: 'ready'` avec une fonction `st
 
 ### Interfaces
 - `public/overlay/` et `public/control/` : l'overlay pour OBS et le panneau de contrôle de LoL.
+- `public/drafter/` : la page que les joueurs ouvrent pour leurs bans et leurs picks (servie par le serveur de partage, pas par le panneau).
 - `public/valorant/overlay/` et `public/valorant/control/` : ceux de VALORANT (le panneau reprend la feuille de style de celui de LoL).
 - `public/shared/` : polices de la charte (licence OFL).
 - `start.bat`, `start-demo.bat`, `start-valorant.bat` : lancement sans l'application, avec Node.js.
@@ -254,6 +287,8 @@ https://127.0.0.1:2999/liveclientdata/allgamedata
 
 Le certificat du jeu est auto-signé : il n'est ignoré que pour cette adresse locale. Pendant la sélection des champions, il lit le client LoL sur `/lol-champ-select/v1/session`, avec le port et le mot de passe du fichier `lockfile`. Pour développeurs : `GET /api/state` renvoie l'état complet, `GET /events` le diffuse en Server-Sent Events, et `GET /api/draft/raw` montre la réponse brute du client pendant une sélection.
 
+Le drafter ajoute `GET /api/drafter` (les liens, réservés au panneau) et `POST /api/drafter` (`create`, `start`, `pause`, `resume`, `undo`, `skip`, `reset`, `close`). Les pages des joueurs parlent au serveur de partage (port 3002) : `/d/<jeton>` (la page), `/d/<jeton>/events` (l'état en direct), `/d/<jeton>/hover` et `/d/<jeton>/lock` (survoler et verrouiller un champion, selon le rôle du jeton).
+
 VALORANT n'a pas de source de données en jeu : son serveur (port 3001) ne reçoit que ce que fait le panneau. Il propose les mêmes `GET /api/state` et `GET /events`, plus `POST /api/match` (modifier les noms, scores, joueurs, maps…) et `POST /api/action` (manche gagnée, fin de map, chrono, annuler…). Comme pour LoL, ces routes n'acceptent que du JSON envoyé par une page servie par le serveur lui-même.
 
 ### 2. Événements traités
@@ -274,6 +309,7 @@ Si vous lancez le serveur en cours de partie, l'historique n'est pas rejoué à 
 - **L'overlay est vide dans OBS** : vérifiez l'adresse (`/overlay`, sans `?preview=1`), la taille 1920×1080 et que le serveur tourne. L'overlay n'affiche rien tant qu'aucune partie n'est en cours : testez avec `start-demo.bat`. Le bouton d'actualisation du cache dans les propriétés de la source recharge la page.
 - **L'application ne démarre pas ou se ferme tout de suite** : regardez `data/overlay.log` (à côté de `Overlay-LoL.exe`).
 - **Remettre les réglages à zéro** : bouton « Tout réinitialiser » du panneau. Pour tout effacer, y compris presets et logos, arrêtez le programme et supprimez le dossier `data/`.
+- **Drafter : « Le port 3002 est déjà utilisé »** : changez de port avec `set DRAFTER_PORT=3003` puis relancez. Si les joueurs n'arrivent pas sur leur lien, vérifiez qu'ils sont sur le même réseau (sinon, ouvrez un tunnel, voir « Drafter »), le pare-feu de Windows et l'adresse du champ « Adresse à partager ».
 - **VALORANT : « Le port 3001 est déjà utilisé »** : changez de port avec `set VALORANT_PORT=3002` puis relancez (pensez à changer l'adresse dans OBS).
 - **VALORANT : les portraits des agents ne s'affichent pas** : ils sont chargés depuis valorant-api.com, il faut une connexion Internet. Sans elle, des pastilles avec les initiales les remplacent ; le reste de l'overlay fonctionne.
 - **VALORANT : l'overlay est vide dans OBS** : il affiche ce que vous saisissez. Vérifiez l'adresse (`http://localhost:3001/overlay`, sans `?preview=1`), les interrupteurs de l'onglet Affichage, et que les joueurs ont un nom ou un agent.
@@ -285,6 +321,7 @@ Si vous lancez le serveur en cours de partie, l'historique n'est pas rejoué à 
 - **Pas de points de vie ni de mana** pour les joueurs : l'API locale ne les donne que pour votre propre champion. Elle ne dit pas non plus quand un sort d'invocateur est lancé : le chrono du Saut éclair se lance **à la main** (onglet Sorts). Pas non plus de positions ni de données de la carte.
 - Sans connexion Internet, les icônes de Data Dragon (champions, objets, sorts, runes) sont remplacées par des pastilles avec les initiales, et les icônes officielles des objectifs par des pictogrammes dessinés.
 - Le cadre de la minimap ne suit pas la taille de la minimap du jeu : réglez-le une fois dans l'onglet Affichage.
+- **Drafter** : un seul draft à la fois, gardé en mémoire (il disparaît si le programme s'arrête). Il suit l'ordre standard de 20 tours, sans autre format pour l'instant. Les joueurs n'ont pas de mot de passe : celui qui a un lien peut jouer pour son équipe. L'accès à distance par un tunnel n'a pas été essayé.
 - **VALORANT n'est pas automatique** : manches, chrono, crédits et K/D/A sont saisis à la main, car le jeu ne les fournit pas au public. Le chrono n'est pas synchronisé avec celui du jeu : il se lance avec les boutons du panneau. Pas de points de vie, de bouclier ni d'armes, et pas de killfeed.
 
 ---

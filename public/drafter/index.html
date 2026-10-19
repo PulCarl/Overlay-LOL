@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Drafter · League of Legends</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/shared/fonts.css">
+  <link rel="stylesheet" href="/drafter/drafter.css">
+</head>
+<body>
+  <header class="top">
+    <section class="side blue">
+      <div class="who"><span class="tag" id="tag-blue">BLU</span><b id="name-blue">Équipe bleue</b></div>
+      <div class="bans" id="bans-blue" aria-label="Bans de l'équipe bleue"></div>
+    </section>
+    <section class="center">
+      <div class="phase" id="phase">Connexion…</div>
+      <div class="timer" id="timer" aria-live="off">--</div>
+      <div class="turn" id="turn"></div>
+    </section>
+    <section class="side red">
+      <div class="who"><span class="tag" id="tag-red">RED</span><b id="name-red">Équipe rouge</b></div>
+      <div class="bans" id="bans-red" aria-label="Bans de l'équipe rouge"></div>
+    </section>
+  </header>
+
+  <div class="you" id="you" role="status"></div>
+
+  <main class="stage">
+    <aside class="picks blue" id="picks-blue" aria-label="Picks de l'équipe bleue"></aside>
+
+    <section class="pool">
+      <div class="tools">
+        <input type="search" id="search" placeholder="Rechercher un champion" autocomplete="off" aria-label="Rechercher un champion">
+        <span class="count" id="count"></span>
+      </div>
+      <div class="grid" id="grid" role="listbox" aria-label="Champions"></div>
+      <div class="bar">
+        <div class="slots" id="slots" hidden>
+          <span class="slots-label">Poste</span>
+          <div class="slots-list" id="slots-list" role="radiogroup" aria-label="Poste du pick"></div>
+        </div>
+        <button class="lock" id="lock" type="button" disabled>Verrouiller</button>
+      </div>
+      <p class="msg" id="msg" role="alert" hidden></p>
+    </section>
+
+    <aside class="picks red" id="picks-red" aria-label="Picks de l'équipe rouge"></aside>
+  </main>
+
+  <p class="legal">Ce projet n'est ni approuvé ni affilié à Riot Games. League of Legends est une marque de Riot Games, Inc.</p>
+  <script src="/drafter/drafter.js"></script>
+</body>
+</html>

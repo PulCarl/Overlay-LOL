@@ -447,6 +447,136 @@
   }
   setInterval(tickSpells, 250);
 
+  /* ------------------------------------------------------------ drafter */
+
+  const POSITIONS = ['Top', 'Jungle', 'Mid', 'ADC', 'Support'];
+  const LINKS = [['blue', 'Équipe bleue', 'ORDER'], ['red', 'Équipe rouge', 'CHAOS'], ['spec', 'Spectateur (lecture seule)', 'spec'], ['admin', 'Régie (joue pour l\'équipe dont c\'est le tour)', 'admin']];
+  let linkKey = null; // adresse pour laquelle les liens affichés ont été demandés (null : pas encore demandés)
+  const rosterInputs = { blue: [], red: [] };
+
+  function buildDrafterSetup() {
+    for (const side of ['blue', 'red']) {
+      const box = $('dr-roster-' + side);
+      POSITIONS.forEach((pos, i) => {
+        const label = el('label', 'fld', pos);
+        const input = el('input');
+        input.type = 'text';
+        input.maxLength = 24;
+        input.placeholder = `Joueur ${i + 1}`;
+        input.autocomplete = 'off';
+        input.addEventListener('input', () => debounce('dr-roster', saveDrafterSetup));
+        label.append(input);
+        box.append(label);
+        rosterInputs[side].push(input);
+      });
+    }
+    $('dr-seconds').addEventListener('input', () => debounce('dr-roster', saveDrafterSetup));
+    for (const [slot] of LINKS) {
+      const row = el('div', 'dr-link');
+      const name = el('span', 'dr-link-name');
+      const input = el('input');
+      input.type = 'text';
+      input.readOnly = true;
+      input.id = 'dr-link-' + slot;
+      const copy = el('button', 'btn small', 'Copier');
+      copy.type = 'button';
+      copy.addEventListener('click', async () => {
+        await copyText(input.value);
+        copy.textContent = 'Copié ✓';
+        setTimeout(() => (copy.textContent = 'Copier'), 1500);
+      });
+      const count = el('span', 'dr-count');
+      count.id = 'dr-n-' + slot;
+      row.append(name, input, copy, count);
+      row.dataset.slot = slot;
+      $('dr-links').append(row);
+    }
+    LINKS.forEach(([slot, label]) => (document.querySelector(`.dr-link[data-slot=${slot}] .dr-link-name`).textContent = label));
+  }
+
+  const rosterOf = () => ({ blue: rosterInputs.blue.map((i) => i.value), red: rosterInputs.red.map((i) => i.value) });
+  const saveDrafterSetup = () => patch({ drafter: { roster: rosterOf(), turnSeconds: Number($('dr-seconds').value) || 30 } });
+  const drafterCmd = (action, extra) => api('POST', '/api/drafter', { action, ...extra });
+
+  /* Les liens ne sont jamais dans l'état diffusé : on les demande au serveur quand le draft s'ouvre ou que l'adresse change. */
+  async function refreshLinks() {
+    try {
+      const res = await api('GET', '/api/drafter');
+      if (!res.active) return;
+      for (const [slot] of LINKS) $('dr-link-' + slot).value = res.links[slot];
+      if (document.activeElement !== $('dr-base')) $('dr-base').value = cfg.drafter.base || '';
+      $('dr-base').placeholder = res.base;
+      $('dr-port').textContent = res.port;
+      const sugg = $('dr-sugg');
+      sugg.textContent = '';
+      for (const url of res.suggestions) {
+        const b = el('button', 'btn small ghost', url);
+        b.type = 'button';
+        b.title = 'Utiliser cette adresse';
+        b.addEventListener('click', () => patch({ drafter: { base: url } }));
+        sugg.append(b);
+      }
+    } catch (_) {
+      /* l'erreur est déjà affichée */
+    }
+  }
+
+  const clockText = (ms) => {
+    const sec = Math.ceil(Math.max(0, ms) / 1000);
+    return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+  };
+
+  function renderDrafter() {
+    const d = state.drafter || { active: false };
+    const t = cfg.teams;
+    $('dr-blue-title').textContent = t.blue.name || 'Équipe bleue';
+    $('dr-red-title').textContent = t.red.name || 'Équipe rouge';
+    $('dr-setup').hidden = d.active;
+    $('dr-live').hidden = !d.active;
+    $('dr-badge').hidden = !d.active;
+    if (!d.active) {
+      linkKey = null;
+      for (const side of ['blue', 'red']) cfg.drafter.roster[side].forEach((name, i) => setIfIdle(rosterInputs[side][i], name, 'dr-roster'));
+      setIfIdle($('dr-seconds'), cfg.drafter.turnSeconds, 'dr-roster');
+      return;
+    }
+    const key = String(cfg.drafter.base);
+    if (key !== linkKey) {
+      linkKey = key;
+      refreshLinks();
+    }
+    const cur = d.current;
+    const who = cur ? (cur.side === 'ORDER' ? t.blue.name || 'L\'équipe bleue' : t.red.name || 'L\'équipe rouge') : '';
+    const left = d.running ? Math.max(0, d.leftMs - (performance.now() - recvAt)) : d.leftMs;
+    let text = '';
+    let hint = '';
+    if (d.status === 'lobby') {
+      text = 'Draft créé : envoyez les liens, puis démarrez quand tout le monde est prêt.';
+      hint = 'Tant que le draft n\'est pas démarré, rien ne s\'affiche dans l\'overlay.';
+    } else if (d.status === 'running') text = `Tour ${d.turn + 1} sur ${d.total} · ${who} ${cur.type === 'ban' ? 'bannit' : 'choisit'} · ${clockText(left)}`;
+    else if (d.status === 'paused') text = `En pause · tour ${d.turn + 1} sur ${d.total} · ${clockText(d.leftMs)}`;
+    else {
+      text = 'Draft terminé.';
+      hint = 'L\'overlay garde le draft à l\'écran. « Fermer le draft » le retire et lance la page de chargement de la partie.';
+    }
+    $('dr-status').textContent = text;
+    $('dr-hint').textContent = hint;
+    $('dr-start').hidden = d.status !== 'lobby';
+    $('dr-pause').hidden = d.status !== 'running';
+    $('dr-resume').hidden = d.status !== 'paused';
+    $('dr-undo').disabled = d.status === 'lobby' || (d.turn === 0 && d.status !== 'finished');
+    $('dr-skip').disabled = !(d.status === 'running' && cur && cur.type === 'ban');
+    $('dr-reset').disabled = d.status === 'lobby';
+    for (const [slot, , role] of LINKS) {
+      const n = d.clients[role];
+      $('dr-n-' + slot).textContent = n ? `${n} connecté${n > 1 ? 's' : ''}` : 'personne';
+      $('dr-n-' + slot).classList.toggle('on', n > 0);
+    }
+  }
+  setInterval(() => {
+    if (state && state.drafter && state.drafter.active && state.drafter.running) renderDrafter();
+  }, 500);
+
   function render(s) {
     state = s;
     recvAt = performance.now();
@@ -459,11 +589,12 @@
     renderSponsors();
     renderPresets();
     renderSpells();
+    renderDrafter();
   }
 
   /* ------------------------------------------------------------ onglets */
 
-  const TABS = ['main', 'spells', 'display', 'teams', 'obs'];
+  const TABS = ['main', 'spells', 'drafter', 'display', 'teams', 'obs'];
   function showTab(name) {
     if (!TABS.includes(name)) name = 'main';
     for (const b of qsa('[role=tab]')) b.setAttribute('aria-selected', String(b.dataset.tab === name));
@@ -533,6 +664,24 @@
     debounce('mapsize', () => patch({ display: { mapSize: Number(e.target.value) } }), 200);
   });
   $('cd-clear-all').addEventListener('click', () => cooldown({ action: 'clearAll' }));
+
+  buildDrafterSetup();
+  $('dr-create').addEventListener('click', async () => {
+    $('dr-error').textContent = '';
+    try {
+      await drafterCmd('create', { roster: rosterOf(), turnSeconds: Number($('dr-seconds').value) || 30 });
+    } catch (e) {
+      $('dr-error').textContent = e.message;
+    }
+  });
+  for (const [id, action] of [['dr-start', 'start'], ['dr-pause', 'pause'], ['dr-resume', 'resume'], ['dr-undo', 'undo'], ['dr-skip', 'skip'], ['dr-reset', 'reset']]) {
+    $(id).addEventListener('click', () => drafterCmd(action).catch(() => {}));
+  }
+  $('dr-close').addEventListener('click', () => {
+    if (!window.confirm('Fermer le draft ?\n\nLes liens cessent de marcher. S\'il est terminé, l\'overlay passe à la page de chargement de la partie.')) return;
+    drafterCmd('close').catch(() => {});
+  });
+  $('dr-base').addEventListener('input', (e) => debounce('dr-base', () => patch({ drafter: { base: e.target.value.trim() } })));
 
   for (const r of qsa('input[name=draft-mode]')) r.addEventListener('change', () => api('POST', '/api/draft', { mode: r.value }).catch(() => {}));
 

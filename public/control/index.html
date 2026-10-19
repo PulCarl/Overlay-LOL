@@ -21,6 +21,7 @@
   <nav class="tabs" role="tablist" aria-label="Sections">
     <button type="button" role="tab" data-tab="main" aria-selected="true">Principal</button>
     <button type="button" role="tab" data-tab="spells" aria-selected="false">Sorts</button>
+    <button type="button" role="tab" data-tab="drafter" aria-selected="false">Drafter</button>
     <button type="button" role="tab" data-tab="display" aria-selected="false">Affichage</button>
     <button type="button" role="tab" data-tab="teams" aria-selected="false">Équipes</button>
     <button type="button" role="tab" data-tab="obs" aria-selected="false">OBS</button>
@@ -165,6 +166,63 @@
         <div class="card-head"><h2 id="cd-title-red">Équipe rouge</h2></div>
         <div class="cdlist" id="cd-red"></div>
       </section>
+    </div>
+
+    <!-- ============================================================ Drafter -->
+    <div class="page" id="tab-drafter" role="tabpanel" hidden>
+      <section class="card">
+        <div class="card-head"><h2><span aria-hidden="true">🎯</span> Drafter</h2><em class="badge" id="dr-badge" hidden>En cours</em></div>
+        <p class="hint first">Un draft de tournoi mené par les joueurs : vous créez le draft, vous envoyez un lien à chaque équipe, et ils font leurs bans et leurs picks chacun chez eux. L'overlay suit en direct, comme pour une vraie sélection des champions.</p>
+      </section>
+
+      <div id="dr-setup" class="drafter-setup">
+        <section class="card">
+          <div class="card-head"><h2>Joueurs et durée</h2></div>
+          <div class="teams">
+            <div class="dr-team blue">
+              <div class="team-band" id="dr-blue-title">Équipe bleue</div>
+              <div class="team-body" id="dr-roster-blue"></div>
+            </div>
+            <div class="dr-team red">
+              <div class="team-band" id="dr-red-title">Équipe rouge</div>
+              <div class="team-body" id="dr-roster-red"></div>
+            </div>
+          </div>
+          <div class="row">
+            <label class="inline">Durée d'un tour <input type="number" id="dr-seconds" min="5" max="300" step="5"> s</label>
+          </div>
+          <p class="hint">Les pseudos suivent l'ordre des postes. Ordre du draft : 6 bans, 6 picks, 4 bans, 4 picks. Si le chrono tombe à zéro, le champion survolé est verrouillé ; sans survol, un ban est passé et un pick est tiré au sort.</p>
+          <div class="row"><button class="btn primary" id="dr-create" type="button">Créer le draft et les liens</button></div>
+          <p class="hint" id="dr-error"></p>
+        </section>
+      </div>
+
+      <div id="dr-live" hidden>
+        <section class="card">
+          <div class="card-head"><h2>Déroulement</h2></div>
+          <p class="dr-status" id="dr-status"></p>
+          <div class="dr-ctl">
+            <button class="btn primary" id="dr-start" type="button">▶ Démarrer</button>
+            <button class="btn" id="dr-pause" type="button">⏸ Pause</button>
+            <button class="btn" id="dr-resume" type="button">▶ Reprendre</button>
+            <button class="btn" id="dr-undo" type="button" title="Annule le dernier ban ou pick">↶ Annuler</button>
+            <button class="btn" id="dr-skip" type="button" title="Passe le ban en cours : personne n'est banni">⏭ Passer le ban</button>
+            <button class="btn ghost" id="dr-reset" type="button" title="Revient au salon d'attente, sans aucun ban ni pick">↺ Recommencer</button>
+            <button class="btn danger" id="dr-close" type="button">✕ Fermer le draft</button>
+          </div>
+          <p class="hint" id="dr-hint"></p>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>Liens à partager</h2></div>
+          <label class="fld">Adresse à partager
+            <input type="text" id="dr-base" placeholder="http://192.168.1.20:3002" autocomplete="off" spellcheck="false">
+          </label>
+          <div class="dr-sugg" id="dr-sugg"></div>
+          <p class="hint">Les joueurs doivent pouvoir joindre cet ordinateur : sur le même réseau, l'adresse proposée suffit. À distance, ouvrez un tunnel vers le port <b id="dr-port">3002</b> (Cloudflare Tunnel, ngrok…) et collez son adresse ici. Seul ce port est partagé, le panneau reste privé.</p>
+          <div class="dr-links" id="dr-links"></div>
+        </section>
+      </div>
     </div>
 
     <!-- ============================================================ Affichage -->
